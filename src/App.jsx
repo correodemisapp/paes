@@ -176,10 +176,12 @@ export default function App() {
         input{font-family:'DM Sans',sans-serif}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes modalIn{from{opacity:0;transform:translate(-50%,-48%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
         .fade{animation:fadeUp 0.3s ease}
         button:disabled{cursor:not-allowed}
       `}</style>
 
+      {/* ── LOGIN ── */}
       {view === "login" && (
         <div style={S.loginWrap} className="fade">
           <div style={S.loginIconBox}>
@@ -200,6 +202,7 @@ export default function App() {
         </div>
       )}
 
+      {/* ── AUTHENTICATED ── */}
       {view !== "login" && (
         <>
           <div style={S.header}>
@@ -221,6 +224,8 @@ export default function App() {
           </div>
 
           <div style={S.body}>
+
+            {/* ── HOME ── */}
             {view === "home" && (
               <div className="fade">
                 <div style={S.statsRow}>
@@ -256,6 +261,7 @@ export default function App() {
               </div>
             )}
 
+            {/* ── TEST ── */}
             {view === "test" && currentQ && (() => {
               const d = DIFF[currentQ.difficulty] || DIFF.Fácil;
               return (
@@ -265,6 +271,7 @@ export default function App() {
                     <span style={{...S.badge, color:d.color, background:d.bg, border:`1px solid ${d.border}`}}>{currentQ.difficulty}</span>
                     <span style={{fontSize:11,color:"#8B8FA8",fontWeight:600}}>{currentQ.category}</span>
                   </div>
+
                   <div style={S.passage}>
                     <div style={S.passageBar} />
                     <div style={{paddingLeft:14, maxHeight:220, overflowY:"auto"}}>
@@ -273,7 +280,9 @@ export default function App() {
                       ))}
                     </div>
                   </div>
+
                   <h3 style={{fontFamily:"Syne",fontWeight:700,fontSize:16,color:"#F1F0EC",lineHeight:1.35,marginBottom:16}}>{currentQ.question}</h3>
+
                   <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:18}}>
                     {currentQ.options.map(opt => {
                       const isConf = confirmed === opt.id;
@@ -292,31 +301,72 @@ export default function App() {
                       );
                     })}
                   </div>
-                  {!showExp ? (
-                    <button disabled={!selected} onClick={confirmAnswer} style={!selected ? S.btnDisabled : S.btnGold}>
-                      <Send style={{width:16,height:16}} /> Confirmar Respuesta
-                    </button>
-                  ) : (
-                    <div style={{background:correct?"rgba(74,222,128,0.06)":"rgba(248,113,113,0.06)", border:`1px solid ${correct?"rgba(74,222,128,0.25)":"rgba(248,113,113,0.25)"}`, borderRadius:18, padding:20, display:"flex", flexDirection:"column", alignItems:"center", gap:12}}>
-                      {(correct ? successImage : errorImage) && (
-                        <img src={correct ? successImage : errorImage} style={{width:"100%",maxWidth:240,borderRadius:12,objectFit:"contain"}} alt="" />
-                      )}
-                      {!(correct ? successImage : errorImage) && (
-                        correct
-                          ? <CheckCircle style={{width:40,height:40,color:"#4ade80"}} />
-                          : <XCircle style={{width:40,height:40,color:"#f87171"}} />
-                      )}
-                      <p style={{fontFamily:"Syne",fontWeight:800,fontSize:20,color:correct?"#4ade80":"#f87171"}}>{correct?"¡Correcto!":"¡Ánimo, tú puedes!"}</p>
-                      <p style={{fontSize:12,color:"#8B8FA8",textAlign:"center",lineHeight:1.7}}>{currentQ.explanation}</p>
-                      <button onClick={nextQ} style={{...S.btnOutline,width:"100%"}}>
-                        Siguiente <ChevronRight style={{width:16,height:16}} />
-                      </button>
-                    </div>
+
+                  <button disabled={!selected} onClick={confirmAnswer} style={!selected ? S.btnDisabled : S.btnGold}>
+                    <Send style={{width:16,height:16}} /> Confirmar Respuesta
+                  </button>
+
+                  {/* ── MODAL FEEDBACK ── */}
+                  {showExp && (
+                    <>
+                      {/* Fondo oscuro */}
+                      <div style={S.modalBackdrop} />
+
+                      {/* Tarjeta centrada */}
+                      <div style={{
+                        ...S.modalCard,
+                        borderColor: correct ? "rgba(74,222,128,0.35)" : "rgba(248,113,113,0.35)",
+                        background: correct ? "rgba(10,18,14,0.97)" : "rgba(18,10,10,0.97)",
+                      }}>
+                        {/* Imagen personalizada o ícono por defecto */}
+                        {(correct ? successImage : errorImage) ? (
+                          <img
+                            src={correct ? successImage : errorImage}
+                            style={{width:"100%", maxWidth:180, borderRadius:12, objectFit:"contain"}}
+                            alt=""
+                          />
+                        ) : (
+                          correct
+                            ? <CheckCircle style={{width:56,height:56,color:"#4ade80"}} />
+                            : <XCircle style={{width:56,height:56,color:"#f87171"}} />
+                        )}
+
+                        {/* Título */}
+                        <p style={{
+                          fontFamily:"Syne", fontWeight:800, fontSize:24,
+                          color: correct ? "#4ade80" : "#f87171",
+                          textAlign:"center", lineHeight:1.1,
+                        }}>
+                          {correct ? "¡Correcto!" : "¡Ánimo, tú puedes!"}
+                        </p>
+
+                        {/* Explicación */}
+                        <p style={{
+                          fontSize:13, color:"#8B8FA8",
+                          textAlign:"center", lineHeight:1.75,
+                          maxWidth:300,
+                        }}>
+                          {currentQ.explanation}
+                        </p>
+
+                        {/* Botón siguiente */}
+                        <button onClick={nextQ} style={{
+                          ...S.btnOutline,
+                          width:"100%",
+                          background: correct ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
+                          borderColor: correct ? "rgba(74,222,128,0.3)" : "rgba(248,113,113,0.3)",
+                          color: correct ? "#4ade80" : "#f87171",
+                        }}>
+                          Siguiente pregunta <ChevronRight style={{width:16,height:16}} />
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
               );
             })()}
 
+            {/* ── SETTINGS ── */}
             {view === "settings" && (
               <div className="fade">
                 {!settingsOpen ? (
@@ -385,6 +435,7 @@ export default function App() {
               </div>
             )}
 
+            {/* ── RESULTS ── */}
             {view === "results" && (
               <div className="fade" style={{textAlign:"center",paddingTop:16}}>
                 <div style={{width:88,height:88,background:"rgba(245,200,66,0.1)",border:"1px solid rgba(245,200,66,0.2)",borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
@@ -404,6 +455,7 @@ export default function App() {
                 <button onClick={goHome} style={S.btnGold}>Volver al Inicio <ChevronRight style={{width:18,height:18}} /></button>
               </div>
             )}
+
           </div>
           <div style={{textAlign:"center",padding:"18px",fontSize:10,color:"#3A3D52",letterSpacing:"0.1em",textTransform:"uppercase",borderTop:"1px solid #1C1E2A"}}>PAES Study Cloud · 2025</div>
         </>
@@ -429,7 +481,7 @@ const S = {
   header:      { background:"#0E0F15", borderBottom:"1px solid #1C1E2A", padding:"16px 22px", display:"flex", justifyContent:"space-between", alignItems:"center" },
   headerIcon:  { width:42, height:42, background:"#141520", border:"1px solid #252738", borderRadius:13, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" },
   balancePill: { background:"rgba(245,200,66,0.1)", border:"1px solid rgba(245,200,66,0.22)", borderRadius:11, padding:"7px 14px", display:"flex", alignItems:"baseline", gap:5 },
-  body:        { maxWidth:540, margin:"0 auto", padding:"24px 18px" },
+  body:        { maxWidth:"95%", margin:"0 auto", padding:"24px 18px" },
   statsRow:    { display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:9, marginBottom:16 },
   statCard:    { background:"#141520", border:"1px solid #1C1E2A", borderRadius:14, padding:"16px 10px", display:"flex", flexDirection:"column", alignItems:"center" },
   progWrap:    { height:4, background:"#1C1E2A", borderRadius:4, overflow:"hidden", marginBottom:6 },
@@ -440,4 +492,31 @@ const S = {
   passageBar:  { position:"absolute", left:0, top:0, bottom:0, width:3, background:"#F5C842" },
   lockBox:     { width:60, height:60, background:"#141520", border:"1px solid #252738", borderRadius:16, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" },
   closeBtn:    { background:"#141520", border:"1px solid #252738", borderRadius:9, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", color:"#8B8FA8", fontSize:13, cursor:"pointer" },
+
+  // ── MODAL ──
+  modalBackdrop: {
+    position:"fixed", inset:0,
+    background:"rgba(0,0,0,0.75)",
+    backdropFilter:"blur(6px)",
+    WebkitBackdropFilter:"blur(6px)",
+    zIndex:50,
+  },
+  modalCard: {
+    position:"fixed",
+    top:"50%", left:"50%",
+    transform:"translate(-50%,-50%)",
+    zIndex:51,
+    width:"calc(100% - 48px)",
+    maxWidth:380,
+    background:"#0E0F15",
+    border:"1px solid",
+    borderRadius:24,
+    padding:"32px 24px",
+    display:"flex",
+    flexDirection:"column",
+    alignItems:"center",
+    gap:16,
+    animation:"modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards",
+    boxShadow:"0 32px 80px rgba(0,0,0,0.6)",
+  },
 };
