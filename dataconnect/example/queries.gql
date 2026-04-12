@@ -1,0 +1,45 @@
+query ListAllSubjects @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public as it only lists subjects.") {
+  subjects {
+    id
+    name
+    description
+  }
+}
+
+mutation CreateNewQuestion($text: String!, $options: [String!]!, $correctOptionIndex: Int!, $difficultyLevel: String!, $subjectId: UUID!) @auth(level: USER, insecureReason: "This operation allows any logged-in user to create a question, which is safe for this application's design.") {
+  question_insert(data: {
+    text: $text,
+    options: $options,
+    correctOptionIndex: $correctOptionIndex,
+    difficultyLevel: $difficultyLevel,
+    subjectId: $subjectId
+  }) {
+    id
+  }
+}
+
+query GetMyQuizAttempts @auth(level: USER) {
+  quizAttempts(where: {userId: {eq_expr: "auth.uid"}}) {
+    id
+    type
+    score
+    startTime
+    endTime
+    subject {
+      name
+    }
+  }
+}
+
+mutation RecordQuizAttempt($type: String!, $startTime: Timestamp!, $endTime: Timestamp!, $score: Float!, $subjectId: UUID!) @auth(level: USER) {
+  quizAttempt_insert(data: {
+    type: $type,
+    startTime: $startTime,
+    endTime: $endTime,
+    score: $score,
+    userId_expr: "auth.uid",
+    subjectId: $subjectId
+  }) {
+    id
+  }
+}

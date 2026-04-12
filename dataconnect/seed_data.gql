@@ -1,0 +1,50 @@
+mutation SeedDemoData @auth(level: USER, insecureReason: "This is a seed mutation and is safe to execute as a logged-in user.") @transaction {
+  user_insertMany(data: [
+    {
+      id: "c18f8d9b-a01c-4b5f-8c3b-5a1d0f6e7c8a",
+      displayName: "Alice Smith",
+      email: "alice.smith@example.com",
+      createdAt: "2023-10-26T10:00:00Z"
+    },
+    {
+      id: "a2b3c4d5-e6f7-8a9b-c0d1-e2f3a4b5c6d7",
+      displayName: "Bob Johnson",
+      email: "bob.johnson@example.com",
+      createdAt: "2023-10-26T10:05:00Z"
+    }
+  ])
+  subject_insertMany(data: [
+    {
+      id: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      name: "Mathematics",
+      description: "Basic and advanced mathematical concepts.",
+      createdAt: "2023-10-26T11:00:00Z"
+    },
+    {
+      id: "fedcba98-7654-3210-fedc-ba9876543210",
+      name: "Science",
+      description: "Physics, Chemistry, and Biology fundamentals.",
+      createdAt: "2023-10-26T11:10:00Z"
+    }
+  ])
+  userSubject_insertMany(data: [
+    {
+      userId: "c18f8d9b-a01c-4b5f-8c3b-5a1d0f6e7c8a",
+      subjectId: "1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+      addedAt: "2023-10-26T12:00:00Z",
+      targetScore: 90
+    },
+    {
+      userId: "a2b3c4d5-e6f7-8a9b-c0d1-e2f3a4b5c6d7",
+      subjectId: "fedcba98-7654-3210-fedc-ba9876543210",
+      addedAt: "2023-10-26T12:15:00Z",
+      targetScore: 85
+    },
+    {
+      userId: "c18f8d9b-a01c-4b5f-8c3b-5a1d0f6e7c8a",
+      subjectId: "fedcba98-7654-3210-fedc-ba9876543210",
+      addedAt: "2023-10-26T12:30:00Z",
+      targetScore: 88
+    }
+  ])
+}

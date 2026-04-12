@@ -1,0 +1,50 @@
+type User @table {
+  displayName: String!
+  email: String!
+  createdAt: Timestamp!
+  photoUrl: String
+  institution: String
+}
+
+type Subject @table {
+  name: String!
+  createdAt: Timestamp!
+  description: String
+}
+
+type Question @table {
+  text: String!
+  options: [String!]!
+  correctOptionIndex: Int!
+  difficultyLevel: String!
+  createdAt: Timestamp!
+  explanation: String
+  imageUrl: String
+  subject: Subject
+}
+
+type QuizAttempt @table {
+  type: String!
+  startTime: Timestamp!
+  endTime: Timestamp!
+  score: Float!
+  createdAt: Timestamp!
+  durationMinutes: Int
+  user: User
+  subject: Subject
+}
+
+type QuizQuestionAttempt @table {
+  userAnswerIndex: Int!
+  isCorrect: Boolean!
+  timeTakenSeconds: Int
+  quizAttempt: QuizAttempt
+  question: Question
+}
+
+type UserSubject @table(key: ["user", "subject"]) {
+  addedAt: Timestamp!
+  targetScore: Int
+  user: User!
+  subject: Subject!
+}
