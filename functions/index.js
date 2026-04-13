@@ -26,7 +26,35 @@ setGlobalOptions({ maxInstances: 10 });
 // Create and deploy your first functions
 // https://firebase.google.com/docs/functions/get-started
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+const axios = require("axios");
+
+exports.generateQuestions = onRequest(async (req, res) => {
+  // Enable CORS
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const response = await axios.post('https://api.anthropic.com/v1/messages', req.body, {
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY, // Set this in Firebase config
+        'anthropic-version': '2023-06-01',
+      },
+    });
+
+    res.status(200).json(response.data);
+  } catch (error) {
+    logger.error('Error calling Anthropic API', error);
+    res.status(error.response?.status || 500).json(error.response?.data || { error: error.message });
+  }
+});

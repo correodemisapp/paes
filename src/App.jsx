@@ -101,11 +101,11 @@ export default function App() {
     if (generating) return;
     setGenerating(true); setErr(""); setErrType("error");
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("https://us-central1-<your-project-id>.cloudfunctions.net/generateQuestions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-3-5-sonnet-20240620",
           max_tokens: 1000,
           system: AI_SYSTEM,
           messages: [{ role: "user", content: AI_USER }]
