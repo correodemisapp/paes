@@ -7,7 +7,6 @@ import { STATIC_QUESTIONS, DIFF, RATES, AI_SYSTEM, AI_USER } from "./questions";
 const DOC_REF = doc(db, "progreso", "usuario-principal");
 const fmt = (v) => new Intl.NumberFormat("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0}).format(v);
 
-// Colores de dificultad para tema claro
 const DIFF_LIGHT = {
   Fácil:      { color:"#2d6a4f", bg:"#d8f3dc", border:"#b7e4c7" },
   Intermedio: { color:"#92601a", bg:"#fef3c7", border:"#fcd34d" },
@@ -38,7 +37,6 @@ export default function App() {
   const [generating, setGenerating]     = useState(false);
   const [rates, setRates]               = useState({ Fácil:100, Intermedio:300, Difícil:500 });
 
-  // ── CARGA INICIAL DESDE FIRESTORE ──
   useEffect(() => {
     (async () => {
       try {
@@ -59,7 +57,6 @@ export default function App() {
     })();
   }, []);
 
-  // ── GUARDAR EN FIRESTORE ──
   const persist = async (patch) => {
     const state = { balance, completedIds, attemptedIds, extraQs, appIcon, successImage, errorImage, rates, ...patch };
     try { await setDoc(DOC_REF, state); }
@@ -101,10 +98,12 @@ export default function App() {
     if (generating) return;
     setGenerating(true); setErr(""); setErrType("error");
     try {
-      const res = await fetch("https://us-central1-<your-project-id>.cloudfunctions.net/generateQuestions", {
+      // ── Llamada al proxy local en vez de Anthropic directamente ──
+      const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
           model: "claude-3-5-sonnet-20240620",
           max_tokens: 1000,
           system: AI_SYSTEM,
@@ -180,7 +179,6 @@ export default function App() {
         input::placeholder{color:#bbb5a8}
       `}</style>
 
-      {/* ── LOGIN ── */}
       {view === "login" && (
         <div style={S.loginWrap} className="fade">
           <div style={S.loginIconBox}>
@@ -192,8 +190,7 @@ export default function App() {
           <h1 style={S.bigTitle}>PAES<br/>Premium</h1>
           <p style={S.subtitle}>Tu entrenador personal de lectura</p>
           {err && <p style={S.errBanner}>{err}</p>}
-          <input
-            type="password" value={loginPass} placeholder="Contraseña"
+          <input type="password" value={loginPass} placeholder="Contraseña"
             onChange={e => { setLoginPass(e.target.value); setErr(""); }}
             onKeyDown={e => e.key === "Enter" && (loginPass === "ElaEdionda" ? setView("home") : setErr("Clave incorrecta"))}
             style={S.loginInput}
@@ -205,10 +202,8 @@ export default function App() {
         </div>
       )}
 
-      {/* ── AUTHENTICATED ── */}
       {view !== "login" && (
         <>
-          {/* Header fijo */}
           <div style={S.header}>
             <div style={{display:"flex",alignItems:"center",gap:12}}>
               <div style={S.headerIcon}>
@@ -230,7 +225,6 @@ export default function App() {
 
           <div style={S.body}>
 
-            {/* ── HOME ── */}
             {view === "home" && (
               <div className="fade">
                 <div style={S.statsRow}>
@@ -248,14 +242,12 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-
                 <div style={S.progWrap}>
                   <div style={{...S.progBar, width:`${allQs.length > 0 ? (attemptedIds.length / allQs.length) * 100 : 0}%`}} />
                 </div>
                 <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e",textAlign:"right",marginBottom:28}}>
                   {allQs.length - attemptedIds.length} pendientes
                 </p>
-
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   <button disabled={available.length === 0} onClick={() => { setIsReview(false); setQIdx(0); setView("test"); }} style={available.length === 0 ? S.btnDisabled : S.btnPrimary}>
                     Iniciar Entrenamiento <ChevronRight style={{width:18,height:18}} />
@@ -270,7 +262,6 @@ export default function App() {
               </div>
             )}
 
-            {/* ── TEST ── */}
             {view === "test" && currentQ && (() => {
               const d = DIFF_LIGHT[currentQ.difficulty] || DIFF_LIGHT.Fácil;
               return (
@@ -283,7 +274,6 @@ export default function App() {
                     <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e",fontWeight:500}}>{currentQ.category}</span>
                   </div>
 
-                  {/* Pasaje */}
                   <div style={S.passage}>
                     <div style={{maxHeight:220, overflowY:"auto"}}>
                       {currentQ.text.split("\n\n").map((p, i, arr) => (
@@ -325,33 +315,23 @@ export default function App() {
                     <Send style={{width:16,height:16}} /> Confirmar Respuesta
                   </button>
 
-                  {/* ── MODAL FEEDBACK ── */}
                   {showExp && (
                     <>
                       <div style={S.modalBackdrop} />
-                      <div style={{
-                        ...S.modalCard,
-                        borderColor: correct ? "#86efac" : "#fca5a5",
-                        background:  correct ? "#f0faf4"  : "#fff5f5",
-                      }}>
-                        {(correct ? successImage : errorImage) ? (
-                          <img src={correct ? successImage : errorImage} style={{width:"100%",maxWidth:180,borderRadius:12,objectFit:"contain"}} alt="" />
-                        ) : (
-                          correct
+                      <div style={{...S.modalCard, borderColor:correct?"#86efac":"#fca5a5", background:correct?"#f0faf4":"#fff5f5"}}>
+                        {(correct ? successImage : errorImage)
+                          ? <img src={correct?successImage:errorImage} style={{width:"100%",maxWidth:180,borderRadius:12,objectFit:"contain"}} alt="" />
+                          : correct
                             ? <CheckCircle style={{width:52,height:52,color:"#2d6a4f"}} />
                             : <XCircle    style={{width:52,height:52,color:"#991b1b"}} />
-                        )}
+                        }
                         <p style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:22,color:correct?"#2d6a4f":"#991b1b",textAlign:"center"}}>
                           {correct ? "¡Correcto!" : "¡Ánimo, tú puedes!"}
                         </p>
                         <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#5a5040",textAlign:"center",lineHeight:1.8,maxWidth:300}}>
                           {currentQ.explanation}
                         </p>
-                        <button onClick={nextQ} style={{
-                          ...S.btnPrimary,
-                          width:"100%",
-                          background: correct ? "#2d6a4f" : "#1a1a2e",
-                        }}>
+                        <button onClick={nextQ} style={{...S.btnPrimary, width:"100%", background:correct?"#2d6a4f":"#1a1a2e"}}>
                           Siguiente pregunta <ChevronRight style={{width:16,height:16}} />
                         </button>
                       </div>
@@ -361,7 +341,6 @@ export default function App() {
               );
             })()}
 
-            {/* ── SETTINGS ── */}
             {view === "settings" && (
               <div className="fade">
                 {!settingsOpen ? (
@@ -398,9 +377,9 @@ export default function App() {
                       <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#9a8f7e",marginBottom:14}}>Genera 3 preguntas nuevas con textos y criterios PAES reales.</p>
                       {err && (
                         <p style={{...S.errBanner,
-                          borderColor: errType==="success" ? "#86efac" : "#fca5a5",
-                          background:  errType==="success" ? "#f0faf4"  : "#fff5f5",
-                          color:       errType==="success" ? "#2d6a4f"  : "#991b1b",
+                          borderColor: errType==="success"?"#86efac":"#fca5a5",
+                          background:  errType==="success"?"#f0faf4":"#fff5f5",
+                          color:       errType==="success"?"#2d6a4f":"#991b1b",
                         }}>{err}</p>
                       )}
                       <button onClick={generateWithAI} disabled={generating} style={generating ? S.btnDisabled : S.btnPrimary}>
@@ -424,20 +403,14 @@ export default function App() {
                           <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:item.color,fontWeight:600,minWidth:90}}>{item.label}</span>
                           <div style={{display:"flex",alignItems:"center",gap:8}}>
                             <button
-                              onClick={() => {
-                                const updated = {...rates, [item.key]: Math.max(0, (rates[item.key]||0) - 50)};
-                                setRates(updated); persist({rates: updated});
-                              }}
+                              onClick={() => { const u = {...rates,[item.key]:Math.max(0,(rates[item.key]||0)-50)}; setRates(u); persist({rates:u}); }}
                               style={{width:30,height:30,borderRadius:7,background:"#f0ede4",border:"1px solid #E8E5DC",color:"#1a1a2e",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}
                             >−</button>
-                            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:14,color:"#1a1a2e",minWidth:54,textAlign:"center"}}>
+                            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:14,color:"#1a1a2e",minWidth:60,textAlign:"center"}}>
                               ${(rates[item.key]||0).toLocaleString("es-CL")}
                             </span>
                             <button
-                              onClick={() => {
-                                const updated = {...rates, [item.key]: (rates[item.key]||0) + 50};
-                                setRates(updated); persist({rates: updated});
-                              }}
+                              onClick={() => { const u = {...rates,[item.key]:(rates[item.key]||0)+50}; setRates(u); persist({rates:u}); }}
                               style={{width:30,height:30,borderRadius:7,background:"#1a1a2e",border:"none",color:"#C8A84B",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}
                             >+</button>
                           </div>
@@ -471,7 +444,6 @@ export default function App() {
               </div>
             )}
 
-            {/* ── RESULTS ── */}
             {view === "results" && (
               <div className="fade" style={{textAlign:"center",paddingTop:16}}>
                 <div style={{width:88,height:88,background:"#fffbf0",border:"2px solid #C8A84B",borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
@@ -512,8 +484,6 @@ export default function App() {
 const S = {
   root:         { minHeight:"100vh", background:"#FAFAF7", fontFamily:"'DM Sans',sans-serif", color:"#1a1a2e" },
   center:       { minHeight:"100vh", background:"#FAFAF7", display:"flex", alignItems:"center", justifyContent:"center" },
-
-  // Login
   loginWrap:    { minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:28, background:"#FAFAF7" },
   loginIconBox: { width:78, height:78, background:"#1a1a2e", border:"3px solid #C8A84B", borderRadius:18, display:"flex", alignItems:"center", justifyContent:"center", marginBottom:22, overflow:"hidden" },
   eyebrow:      { fontFamily:"'DM Sans',sans-serif", fontSize:10, fontWeight:600, letterSpacing:"0.2em", textTransform:"uppercase", color:"#C8A84B", marginBottom:10 },
@@ -521,38 +491,22 @@ const S = {
   subtitle:     { fontFamily:"'DM Sans',sans-serif", fontSize:14, color:"#9a8f7e", marginBottom:32, textAlign:"center" },
   loginInput:   { width:"100%", maxWidth:320, background:"#fff", border:"1px solid #E8E5DC", borderRadius:11, padding:"14px 18px", fontSize:15, color:"#1a1a2e", textAlign:"center", letterSpacing:"0.3em", outline:"none", marginBottom:12, display:"block", boxShadow:"0 1px 4px rgba(0,0,0,0.05)" },
   errBanner:    { background:"#fff5f5", border:"1px solid #fca5a5", borderRadius:9, padding:"9px 14px", fontSize:12, color:"#991b1b", textAlign:"center", marginBottom:12, width:"100%", maxWidth:320, fontFamily:"'DM Sans',sans-serif" },
-
-  // Buttons
   btnPrimary:   { width:"100%", maxWidth:320, background:"#1a1a2e", color:"#F5F0E8", fontFamily:"'Playfair Display',serif", fontWeight:700, fontSize:15, padding:"15px 20px", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 2px 8px rgba(26,26,46,0.18)" },
   btnSecondary: { width:"100%", background:"#fff", border:"1px solid #E8E5DC", color:"#1a1a2e", fontFamily:"'DM Sans',sans-serif", fontWeight:600, fontSize:14, padding:"13px 18px", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", gap:8, boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
   btnGhost:     { background:"transparent", border:"1px solid #E8E5DC", color:"#9a8f7e", fontFamily:"'DM Sans',sans-serif", fontWeight:500, fontSize:13, padding:"11px 16px", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
   btnDisabled:  { width:"100%", maxWidth:320, background:"#E8E5DC", color:"#bbb5a8", fontFamily:"'Playfair Display',serif", fontWeight:700, fontSize:15, padding:"15px 20px", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
-
-  // Header
   header:       { background:"#1a1a2e", borderBottom:"3px solid #C8A84B", padding:"14px 22px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"fixed", top:0, left:0, right:0, zIndex:40, boxShadow:"0 4px 20px rgba(26,26,46,0.25)" },
   headerIcon:   { width:40, height:40, background:"rgba(200,168,75,0.15)", border:"1px solid rgba(200,168,75,0.4)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" },
   balancePill:  { background:"#C8A84B", padding:"7px 16px", borderRadius:20 },
-
-  // Body
   body:         { maxWidth:"95%", margin:"0 auto", padding:"24px 18px", paddingTop:"100px" },
-
-  // Stats
   statsRow:     { display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:16 },
   statCard:     { background:"#fff", border:"1px solid #E8E5DC", borderRadius:13, padding:"14px 10px", display:"flex", flexDirection:"column", alignItems:"center", boxShadow:"0 1px 4px rgba(0,0,0,0.04)" },
-
-  // Progress
   progWrap:     { height:5, background:"#E8E5DC", borderRadius:4, overflow:"hidden", marginBottom:7 },
   progBar:      { height:"100%", background:"linear-gradient(90deg,#C8A84B,#2d6a4f)", borderRadius:4, transition:"width 0.5s ease" },
-
-  // Test
   backBtn:      { background:"#fff", border:"1px solid #E8E5DC", borderRadius:9, padding:"7px 9px", display:"flex", alignItems:"center", color:"#9a8f7e", boxShadow:"0 1px 3px rgba(0,0,0,0.05)" },
   passage:      { background:"#fff", borderLeft:"4px solid #C8A84B", borderTop:"1px solid #E8E5DC", borderRight:"1px solid #E8E5DC", borderBottom:"1px solid #E8E5DC", borderRadius:"0 12px 12px 0", padding:"16px 18px", marginBottom:18, boxShadow:"0 1px 6px rgba(0,0,0,0.05)" },
-
-  // Settings
   lockBox:      { width:60, height:60, background:"#fffbf0", border:"2px solid #C8A84B", borderRadius:16, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" },
   closeBtn:     { background:"#fff", border:"1px solid #E8E5DC", borderRadius:8, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", color:"#9a8f7e", fontSize:13, cursor:"pointer" },
-
-  // Modal feedback
   modalBackdrop:{ position:"fixed", inset:0, background:"rgba(26,26,46,0.55)", backdropFilter:"blur(6px)", WebkitBackdropFilter:"blur(6px)", zIndex:50 },
   modalCard:    { position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:51, width:"calc(100% - 48px)", maxWidth:380, border:"2px solid", borderRadius:24, padding:"32px 24px", display:"flex", flexDirection:"column", alignItems:"center", gap:16, animation:"modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards", boxShadow:"0 24px 60px rgba(0,0,0,0.15)" },
 };
