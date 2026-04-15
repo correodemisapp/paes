@@ -4,6 +4,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("Falta GEMINI_API_KEY en las variables de entorno");
+      return res.status(500).json({ error: "Configuración del servidor incompleta" });
+    }
+
     const { system, messages } = req.body;
 
     const userContent = messages?.[0]?.content || "";
