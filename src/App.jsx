@@ -426,11 +426,11 @@ const S = {
   statsRow:     { display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10, marginBottom:16 },
   statCard:     { background:"#fff", border:"1px solid #E8E5DC", borderRadius:13, padding:"14px 10px", display:"flex", flexDirection:"column", alignItems:"center" },
   progWrap:     { height:5, background:"#E8E5DC", borderRadius:4, overflow:"hidden", marginBottom:7 },
-  progBar:      { height:"100%", background:"linear-gradient(90deg,#C8A84B,#2d6a4f)", borderRadius:4, transition:"width 0.5s ease" },
+  progBar:      { height:"100%", background:"linear-gradient(90deg  ,#C8A84B,#2d6a4f)", borderRadius:4, transition:"width 0.5s ease" },
   backBtn:      { background:"#fff", border:"1px solid #E8E5DC", borderRadius:9, padding:"7px 9px", display:"flex", alignItems:"center", color:"#9a8f7e" },
   passage:      { background:"#fff", borderLeft:"4px solid #C8A84B", borderTop:"1px solid #E8E5DC", borderRight:"1px solid #E8E5DC", borderBottom:"1px solid #E8E5DC", borderRadius:"0 12px 12px 0", padding:"16px 18px", marginBottom:18 },
   lockBox:      { width:60, height:60, background:"#fffbf0", border:"2px solid #C8A84B", borderRadius:16, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" },
   closeBtn:     { background:"#fff", border:"1px solid #E8E5DC", borderRadius:8, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", color:"#9a8f7e", fontSize:13 },
   modalBackdrop:{ position:"fixed", inset:0, background:"rgba(26,26,46,0.55)", backdropFilter:"blur(6px)", zIndex:50 },
   modalCard:    { position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:51, width:"calc(100% - 48px)", maxWidth:380, border:"2px solid", borderRadius:24, padding:"32px 24px", display:"flex", flexDirection:"column", alignItems:"center", gap:16, animation:"modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards" },
-};
+}; 
