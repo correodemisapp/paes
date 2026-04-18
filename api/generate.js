@@ -10,7 +10,9 @@ export default async function handler(req, res) {
 
     const { system, messages } = req.body;
     const userContent = messages?.[0]?.content || "";
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    // Nota: Asegúrate de que el modelo gemini-2.5-flash esté disponible, 
+    // si no, usa gemini-1.5-flash que es el estándar actual.
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
     const response = await fetch(apiUrl, {
       method: "POST",
@@ -27,16 +29,25 @@ export default async function handler(req, res) {
     let textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const cleanText = textResponse.replace(/```json|```/g, "").trim();
     const parsedData = JSON.parse(cleanText);
-    const newQuestions = parsedData.questions || [];
+    
+    // Extraemos las preguntas del JSON que generó Gemini
+    const newQuestions = parsedData.questions || parsedData.preguntas || (Array.isArray(parsedData) ? parsedData : []);
 
-    // Persistencia en KV
+    // Persistencia en KV (Vercel)
     const existingQuestions = (await kv.get('custom_questions')) || [];
     const updatedQuestions = [...existingQuestions, ...newQuestions];
     await kv.set('custom_questions', updatedQuestions);
 
-    return res.status(200).json({ success: true, count: newQuestions.length });
+    // --- LA CORRECCIÓN ESTÁ AQUÍ ---
+    // Antes solo enviabas 'success' y 'count'. Ahora enviamos las 'questions' reales.
+    return res.status(200).json({ 
+      success: true, 
+      count: newQuestions.length,
+      questions: newQuestions // <--- ESTA LÍNEA ES VITAL
+    });
+
   } catch (error) {
-    console.error(error);
+    console.error("ERROR BACKEND:", error);
     return res.status(500).json({ error: error.message });
   }
 }
