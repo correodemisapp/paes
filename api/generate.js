@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const userContent = messages?.[0]?.content || "";
     // Nota: Asegúrate de que el modelo gemini-2.5-flash esté disponible, 
     // si no, usa gemini-1.5-flash que es el estándar actual.
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
 
     const response = await fetch(apiUrl, {
       method: "POST",
