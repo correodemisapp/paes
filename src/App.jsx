@@ -67,7 +67,10 @@ export default function App() {
     catch (e) { console.error("Error guardando datos:", e); }
   };
 
-  const allQs = useMemo(() => [...STATIC_QUESTIONS, ...extraQs], [extraQs]);
+  const allQs = useMemo(() => [
+  ...(STATIC_QUESTIONS || []), 
+  ...(extraQs || [])
+], [extraQs]);
   const available = useMemo(() =>
     isReview ? allQs : allQs.filter(q => !attemptedIds.includes(q.id)),
     [allQs, attemptedIds, isReview]);
@@ -188,21 +191,60 @@ const nextQ = () => {
 
   return (
     <div style={S.root}>
-      <style>{`
+<style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+        
         *{box-sizing:border-box;margin:0;padding:0}
-        button{cursor:pointer;border:none;font-family:'DM Sans',sans-serif}
-        input{font-family:'DM Sans',sans-serif;color:#1a1a2e}
+        
+        button{
+          cursor:pointer;
+          border:none;
+          font-family:'DM Sans',sans-serif;
+          transition: all 0.2s ease;
+        }
+        
+        input{
+          font-family:'DM Sans',sans-serif;
+          color:#1a1a2e;
+          transition: all 0.2s ease;
+        }
+
+        /* --- NUEVAS REGLAS DE INTERACCIÓN --- */
+        .home-card { 
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
+          cursor: pointer; 
+        }
+        
+        .home-card:hover { 
+          transform: translateY(-4px) scale(1.01); 
+          box-shadow: 0 12px 24px rgba(200, 168, 75, 0.15) !important;
+          border-color: #C8A84B !important;
+        }
+
+        input:focus {
+          border-color: #1a1a2e !important;
+          background-color: #fffbf0 !important;
+          transform: scale(1.02);
+          box-shadow: 0 6px 20px rgba(200, 168, 75, 0.2) !important;
+          outline: none;
+        }
+        /* ------------------------------------ */
+
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes modalIn{from{opacity:0;transform:translate(-50%,-48%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+        
         .fade{animation:fadeUp 0.3s ease}
+        
         button:disabled{cursor:not-allowed}
+        
         ::-webkit-scrollbar{width:4px}
         ::-webkit-scrollbar-track{background:#f0ede4}
         ::-webkit-scrollbar-thumb{background:#C8A84B55;border-radius:4px}
+        
         input::placeholder{color:#bbb5a8}
       `}</style>
+      
 
       {view === "login" && (
         <Login
