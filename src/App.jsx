@@ -3,7 +3,7 @@ import { Trophy, Settings, ChevronRight, Brain, Lock, History, Send, Layers, Loa
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { STATIC_QUESTIONS, DIFF, RATES, AI_SYSTEM, AI_USER } from "./questions";
-
+/* 17/04*/
 const DOC_REF = doc(db, "progreso", "usuario-principal");
 const fmt = (v) => new Intl.NumberFormat("es-CL",{style:"currency",currency:"CLP",maximumFractionDigits:0}).format(v);
 
