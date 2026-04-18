@@ -112,69 +112,100 @@ const nextQ = () => {
   };
 
 const generateWithAI = async () => {
-  if (generating) return;
-  setGenerating(true); setErr(""); setErrType("error");
-  try {
-    const res = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system: AI_SYSTEM,
-        messages: [{ role: "user", content: AI_USER }]
-      })
-    });
-
-    if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
-
-    const data = await res.json();
-    
-    // 1. ESPÍA: Imprimimos la respuesta real para ver qué envía Gemini
-    console.log("RAW DATA DE IA:", data);
-
-    let rawText = "";
-    // Extraemos el texto según la estructura que devuelva tu API
-    if (data.questions) {
-      rawText = JSON.stringify(data);
-    } else {
-      rawText = data.content?.map(b => b.text).join("") || data.text || JSON.stringify(data);
-    }
-
-    // 2. LIMPIEZA: Quitamos bloques de código Markdown (```json ... ```) que rompen el parseo
-    const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-    
-    // 3. EXTRACCIÓN: Buscamos el objeto JSON dentro del texto
-    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("La IA no envió un formato JSON válido");
-    
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    // 4. FLEXIBILIDAD: Detectamos si las preguntas vienen como array o en un campo
-    const rawQs = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.preguntas || []);
-
-    if (rawQs.length === 0) {
-      throw new Error("No se encontraron preguntas en la respuesta");
-    }
-
-    // 5. NORMALIZACIÓN: Aseguramos que cada pregunta tenga ID y dificultad
-    const ts = Date.now();
-    const newQs = rawQs.map((q, i) => ({ 
-      ...q, 
-      id: `gen_${ts}_${i}`,
-      difficulty: q.difficulty || "Intermedio"
-    }));
-
-    const updated = [...extraQs, ...newQs];
-    setExtraQs(updated);
-    await persist({ extraQs: updated });
-    
-    setErrType("success");
-    setErr(`✓ ${newQs.length} preguntas añadidas correctamente`);
-  } catch (e) {
-    console.error("DETALLE ERROR IA:", e);
+    if (generating) return;
+    setGenerating(true); 
+    setErr(""); 
     setErrType("error");
-    setErr(`Error: ${e.message}`);
-  } finally { setGenerating(false); }
-};
+
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system: AI_SYSTEM,
+          messages: [{ role: "user", content: AI_USER }]
+        })
+      });
+
+      if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
+
+      const data = await res.json();
+      
+      // 1. ESPIAR LA RESPUESTA (Crucial para ver qué manda el servidor)
+      console.log("RAW DATA DE IA:", data);
+
+      // Si el servidor manda success pero no manda el array de preguntas
+      if (data.success && !data.questions && !data.preguntas && !Array.isArray(data)) {
+        throw new Error("El servidor confirmó éxito pero NO envió las preguntas. Revisa el Backend.");
+      }
+
+      // 2. EXTRAER EL TEXTO (Buscamos en todas las rutas posibles de la API)
+      let rawText = "";
+      if (data.questions || data.preguntas) {
+        rawText = JSON.stringify(data);
+      } else {
+        // Caso de APIs de streaming o raw de Gemini/Claude
+        rawText = data.content?.map(b => b.text).join("") || data.text || JSON.stringify(data);
+      }
+
+      // 3. LIMPIEZA DE MARKDOWN (Elimina ```json ... ```)
+      const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      
+      // 4. EXTRAER SOLO EL OBJETO JSON (Ignora texto extra de la IA)
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No se encontró un formato JSON válido en la respuesta.");
+      
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      // 5. DETECTAR EL ARRAY DE PREGUNTAS
+      const rawQs = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.preguntas || []);
+
+      if (rawQs.length === 0) {
+        throw new Error("La IA no incluyó ninguna pregunta en el listado.");
+      }
+
+      // 6. NORMALIZACIÓN (Formatear para que React entienda todo)
+      const ts = Date.now();
+      const newQs = rawQs.map((q, i) => {
+        // Si las opciones vienen como [{id: 'A', text: '...'}], las pasamos a { A: '...' }
+        let fixedOptions = {};
+        if (Array.isArray(q.options)) {
+          q.options.forEach(opt => {
+            const key = opt.id || opt.key || "A";
+            fixedOptions[key] = opt.text || opt.value || "";
+          });
+        } else {
+          fixedOptions = q.options || {};
+        }
+
+        return {
+          ...q,
+          id: `gen_${ts}_${i}`,
+          // Unimos el texto de contexto con la pregunta para comprensión lectora
+          question: q.text ? `${q.text}\n\n${q.question}` : q.question,
+          options: fixedOptions,
+          correct: q.correct || q.respuesta || "A",
+          difficulty: q.difficulty || "Intermedio",
+          explanation: q.explanation || "Explicación generada automáticamente."
+        };
+      });
+
+      // 7. ACTUALIZAR Y PERSISTIR
+      const updated = [...extraQs, ...newQs];
+      setExtraQs(updated);
+      await persist({ extraQs: updated });
+      
+      setErrType("success");
+      setErr(`✓ ${newQs.length} preguntas añadidas correctamente`);
+
+    } catch (e) {
+      console.error("DETALLE ERROR IA:", e);
+      setErrType("error");
+      setErr(`Error: ${e.message}`);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
 
   const uploadImg = (e, type) => {
