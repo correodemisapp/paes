@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Loader2, Wand2, Lock, Upload, XCircle } from "lucide-react";
+import { Sparkles, Loader2, Wand2, Lock, Upload, XCircle, ChevronLeft, Trash2, Coins, Image as ImageIcon } from "lucide-react";
 
 export default function Settings({ 
   settingsOpen, setSettingsOpen, settingsPass, setSettingsPass,
@@ -7,31 +7,50 @@ export default function Settings({
   rates, setRates, persist, uploadImg, resetAll, fmt, S 
 }) {
   
+  // Contenedor base para mantener la consecuencia visual
+  const containerStyle = {
+    maxWidth: "420px",
+    margin: "0 auto",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center"
+  };
+
   if (!settingsOpen) {
     return (
-      <div className="fade" style={{ textAlign: "center", paddingTop: 32 }}>
-        <div style={S.lockBox}><Lock style={{ width: 24, height: 24, color: "#C8A84B" }} /></div>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 22, color: "#1a1a2e", marginBottom: 6 }}>Acceso Parental</h2>
-        <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 13, color: "#9a8f7e", marginBottom: 24 }}>Ingresa la clave de configuración</p>
+      <div className="fade" style={containerStyle}>
+        <div style={{ ...S.lockBox, width: 70, height: 70, marginBottom: 20 }}>
+          <Lock size={30} color="#C8A84B" />
+        </div>
         
-        {err && <p style={S.errBanner}>{err}</p>}
+        <h2 style={{ ...S.bigTitle, fontSize: 24, marginBottom: 8 }}>Acceso Parental</h2>
+        <p style={{ ...S.subtitle, marginBottom: 32 }}>Ingresa la clave para configurar el sistema</p>
+        
+        {err && (
+          <div style={{ ...S.errBanner, width: "100%", marginBottom: 16, backgroundColor: "#ffebee", color: "#c62828" }}>
+            {err}
+          </div>
+        )}
         
         <input 
           type="password" 
+          className="home-card"
           value={settingsPass} 
-          placeholder="Contraseña"
+          placeholder="••••••••"
           onChange={e => { setSettingsPass(e.target.value); setErr(""); }}
           onKeyDown={e => e.key === "Enter" && (settingsPass === "camboropaes" ? setSettingsOpen(true) : setErr("Clave incorrecta"))}
-          style={{ ...S.loginInput, marginBottom: 12 }}
+          style={{ ...S.loginInput, textAlign: "center", fontSize: 20, letterSpacing: "0.2em", marginBottom: 20 }}
         />
         
-        <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={goHome} style={{ ...S.btnGhost, flex: 1 }}>Volver</button>
+        <div style={{ display: "flex", gap: 12, width: "100%" }}>
+          <button onClick={goHome} style={{ ...S.btnGhost, flex: 1, height: 50 }}>Volver</button>
           <button 
+            className="home-card"
             onClick={() => settingsPass === "camboropaes" ? setSettingsOpen(true) : setErr("Clave incorrecta")} 
-            style={{ ...S.btnPrimary, flex: 2 }}
+            style={{ ...S.btnPrimary, flex: 2, height: 50 }}
           >
-            Entrar
+            Desbloquear
           </button>
         </div>
       </div>
@@ -39,66 +58,118 @@ export default function Settings({
   }
 
   return (
-    <div className="fade">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 20, color: "#1a1a2e" }}>Configuración</h2>
-        <button onClick={() => { setSettingsOpen(false); goHome(); }} style={S.closeBtn}>✕</button>
+    <div className="fade" style={{ ...containerStyle, textAlign: "left", alignItems: "stretch" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+        <div>
+          <h2 style={{ ...S.bigTitle, fontSize: 22, marginBottom: 4 }}>Configuración</h2>
+          <p style={S.subtitle}>Panel de control administrativo</p>
+        </div>
+        <button onClick={() => { setSettingsOpen(false); goHome(); }} style={{ ...S.btnGhost, width: 40, height: 40, padding: 0, borderRadius: "50%" }}>✕</button>
       </div>
 
-      {/* IA de Generación */}
-      <div style={{ background: "#fff", border: "1px solid #E8E5DC", borderLeft: "4px solid #C8A84B", borderRadius: "0 12px 12px 0", padding: 18, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <Sparkles style={{ width: 15, height: 15, color: "#C8A84B" }} />
-          <p style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, color: "#1a1a2e" }}>Generar Preguntas con IA</p>
+      {/* IA de Generación - Tarjeta Destacada */}
+      <div className="home-card" style={{ 
+        background: "white", 
+        border: "1px solid #E8E5DC", 
+        borderLeft: "4px solid #C8A84B", 
+        borderRadius: "16px", 
+        padding: 20, 
+        marginBottom: 20,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.03)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <Sparkles size={18} color="#C8A84B" />
+          <p style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 16, color: "#1a1a2e" }}>Generador de Preguntas</p>
         </div>
         
         {err && (
-          <p style={{ 
-            ...S.errBanner, 
-            borderColor: errType === "success" ? "#86efac" : "#fca5a5", 
-            background: errType === "success" ? "#f0faf4" : "#fff5f5",
+          <div style={{ 
+            padding: "10px", 
+            borderRadius: "8px", 
+            fontSize: 12, 
+            marginBottom: 16,
+            backgroundColor: errType === "success" ? "#e8f5e9" : "#fff5f5",
             color: errType === "success" ? "#2d6a4f" : "#991b1b",
-            width: "100%", maxWidth: "none"
-          }}>{err}</p>
+            border: `1px solid ${errType === "success" ? "#c8e6c9" : "#fca5a5"}`
+          }}>{err}</div>
         )}
 
-        <button onClick={generateWithAI} disabled={generating} style={generating ? S.btnDisabled : S.btnPrimary}>
-          {generating ? <Loader2 style={{ width: 14, height: 14, animation: "spin 1s linear infinite" }} /> : <Wand2 style={{ width: 14, height: 14 }} />}
-          {generating ? "Generando..." : "Generar 3 Preguntas PAES"}
+        <button 
+          onClick={generateWithAI} 
+          disabled={generating} 
+          style={{ ...(generating ? S.btnDisabled : S.btnPrimary), width: "100%", height: 48 }}
+        >
+          {generating ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
+          {generating ? "Procesando..." : "Generar 3 Preguntas PAES"}
         </button>
       </div>
 
       {/* Valores CLP */}
-      <div style={{ background: "#fff", border: "1px solid #E8E5DC", borderRadius: 12, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-        <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 9, color: "#9a8f7e", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 14 }}>Valor por dificultad (CLP)</p>
+      <div className="home-card" style={{ background: "#fff", border: "1px solid #E8E5DC", borderRadius: 16, padding: 20, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <Coins size={16} color="#9a8f7e" />
+          <p style={{ ...S.subtitle, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 0 }}>Recompensas CLP</p>
+        </div>
         {["Fácil", "Intermedio", "Difícil"].map(key => (
-          <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>{key}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <button onClick={() => { const u = { ...rates, [key]: Math.max(0, (rates[key] || 0) - 50) }; setRates(u); persist({ rates: u }); }} style={S.btnSmall}>−</button>
-              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, fontSize: 14, minWidth: 60, textAlign: "center" }}>{fmt(rates[key])}</span>
-              <button onClick={() => { const u = { ...rates, [key]: (rates[key] || 0) + 50 }; setRates(u); persist({ rates: u }); }} style={S.btnSmall}>+</button>
+          <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#1a1a2e" }}>{key}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button onClick={() => { const u = { ...rates, [key]: Math.max(0, (rates[key] || 0) - 50) }; setRates(u); persist({ rates: u }); }} style={{ ...S.btnSmall, width: 32, height: 32 }}>−</button>
+              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, fontSize: 15, minWidth: 70, textAlign: "center" }}>{fmt(rates[key])}</span>
+              <button onClick={() => { const u = { ...rates, [key]: (rates[key] || 0) + 50 }; setRates(u); persist({ rates: u }); }} style={{ ...S.btnSmall, width: 32, height: 32 }}>+</button>
             </div>
           </div>
         ))}
       </div>
 
       {/* Multimedia */}
-      <div style={{ background: "#fff", border: "1px solid #E8E5DC", borderRadius: 12, padding: 16, marginBottom: 14, boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-        <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 9, color: "#9a8f7e", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 12 }}>Multimedia</p>
-        {[{ label: "Imagen de acierto ✓", t: "success" }, { label: "Imagen de error ✗", t: "error" }, { label: "Icono de la app", t: "icon" }].map(item => (
-          <label key={item.t} style={{ display: "flex", alignItems: "center", gap: 12, background: "#FAFAF7", border: "1px solid #E8E5DC", borderRadius: 9, padding: "10px 14px", marginBottom: 8, cursor: "pointer" }}>
-            <Upload style={{ width: 13, height: 13, color: "#9a8f7e" }} />
-            <span style={{ fontSize: 13 }}>{item.label}</span>
-            <input type="file" style={{ display: "none" }} accept="image/*" onChange={e => uploadImg(e, item.t)} />
-          </label>
-        ))}
+      <div className="home-card" style={{ background: "#fff", border: "1px solid #E8E5DC", borderRadius: 16, padding: 20, marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <ImageIcon size={16} color="#9a8f7e" />
+          <p style={{ ...S.subtitle, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 0 }}>Personalización Visual</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+          {[{ label: "Imagen de Acierto", t: "success" }, { label: "Imagen de Error", t: "error" }, { label: "Icono App", t: "icon" }].map(item => (
+            <label key={item.t} className="home-card" style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "space-between",
+              background: "#FAFAF7", 
+              border: "1px solid #E8E5DC", 
+              borderRadius: "12px", 
+              padding: "12px 16px", 
+              cursor: "pointer" 
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 500, color: "#1a1a2e" }}>{item.label}</span>
+              <Upload size={14} color="#C8A84B" />
+              <input type="file" style={{ display: "none" }} accept="image/*" onChange={e => uploadImg(e, item.t)} />
+            </label>
+          ))}
+        </div>
       </div>
 
-      <button onClick={resetAll} style={{ width: "100%", background: "#fff5f5", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: 11, padding: "13px", fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-        Reiniciar Todo el Progreso
-      </button>
-      <button onClick={() => { setSettingsOpen(false); goHome(); }} style={{ ...S.btnGhost, width: "100%" }}>Cerrar</button>
+      {/* Botones de Acción Final */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <button 
+          className="home-card"
+          onClick={resetAll} 
+          style={{ width: "100%", background: "#fff5f5", border: "1px solid #fca5a5", color: "#991b1b", borderRadius: "14px", padding: "14px", fontSize: 13, fontWeight: 600 }}
+        >
+          <Trash2 size={14} style={{ marginRight: 8 }} /> Reiniciar Todo el Progreso
+        </button>
+        
+        <button 
+          className="home-card"
+          onClick={() => { setSettingsOpen(false); goHome(); }} 
+          style={{ ...S.btnGhost, width: "100%", height: 50 }}
+        >
+          <ChevronLeft size={16} /> Volver al Inicio
+        </button>
+      </div>
+
+      <div style={{ marginTop: 40, textAlign: "center", opacity: 0.3, fontSize: 9, letterSpacing: "0.2em" }}>
+        PAES STUDY SYSTEM v2.5
+      </div>
     </div>
   );
 }
