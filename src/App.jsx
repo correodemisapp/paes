@@ -19,7 +19,7 @@ export default function App() {
   const [balance, setBalance]           = useState(0);
   const [completedIds, setCompleted]    = useState([]);
   const [attemptedIds, setAttempted]    = useState([]);
-  const [extraQs, setExtraQs]           = useState([]); // <--- Ahora viene de Vercel KV
+  const [extraQs, setExtraQs]           = useState([]);
   const [appIcon, setAppIcon]           = useState(null);
   const [successImage, setSuccessImage] = useState(null);
   const [errorImage, setErrorImage]     = useState(null);
@@ -37,11 +37,9 @@ export default function App() {
   const [generating, setGenerating]     = useState(false);
   const [rates, setRates]               = useState({ Fácil:100, Intermedio:300, Difícil:500 });
 
-  // --- CARGA INICIAL UNIFICADA (Firebase + Vercel) ---
   useEffect(() => {
     (async () => {
       try {
-        // 1. Cargar progreso, imágenes y configuración de Firebase
         const snap = await getDoc(DOC_REF);
         if (snap.exists()) {
           const d = snap.data();
@@ -53,33 +51,28 @@ export default function App() {
           if (d.errorImage)    setErrorImage(d.errorImage);
           if (d.rates)         setRates(d.rates);
         }
-
-        // 2. Cargar preguntas dinámicas de Vercel KV
         const res = await fetch('/api/questions');
         const data = await res.json();
         if (data.questions) setExtraQs(data.questions);
-
       } catch (e) { 
-        console.error("Error cargando datos maestros:", e); 
+        console.error("Error cargando datos:", e); 
       }
       setReady(true);
     })();
   }, []);
 
   const persist = async (patch) => {
-    // Solo guardamos progreso y config en Firebase (ya no las preguntas)
     const state = { balance, completedIds, attemptedIds, appIcon, successImage, errorImage, rates, ...patch };
     try { await setDoc(DOC_REF, state); }
     catch (e) { console.error("Error guardando datos:", e); }
   };
 
-const allQs = useMemo(() => [...(STATIC_QUESTIONS || []), ...(extraQs || [])], [extraQs]);
+  const allQs = useMemo(() => [...(STATIC_QUESTIONS || []), ...(extraQs || [])], [extraQs]);
 
-const available = useMemo(() =>
-  isReview ? allQs : allQs.filter(q => q && q.id && !attemptedIds.includes(q.id)),
-[allQs, attemptedIds, isReview]);
+  const available = useMemo(() =>
+    isReview ? allQs : allQs.filter(q => q && q.id && !attemptedIds.includes(q.id)),
+  [allQs, attemptedIds, isReview]);
   
-  // Clave: Si no hay disponibles, currentQ es null
   const currentQ  = available[qIdx] || null;
 
   const goHome = () => {
@@ -102,13 +95,11 @@ const available = useMemo(() =>
   };
 
   const nextQ = () => {
-    // Si era la última disponible de esta tanda, ir a resultados
     if (available.length <= 1 && !isReview) { setView("results"); return; }
     setQIdx(isReview ? (p => (p + 1) % available.length) : 0);
     setSelected(null); setConfirmed(null); setShowExp(false); setCorrect(null);
   };
 
-  // --- GENERACIÓN CON IA (Vercel KV) ---
   const generateWithAI = async () => {
     if (generating) return;
     setGenerating(true); setErr(""); setErrType("error");
@@ -116,20 +107,14 @@ const available = useMemo(() =>
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: AI_SYSTEM,
-          messages: [{ role: "user", content: AI_USER }]
-        })
+        body: JSON.stringify({ system: AI_SYSTEM, messages: [{ role: "user", content: AI_USER }] })
       });
       if (!res.ok) throw new Error(`Error ${res.status}`);
-      
-      // Tras generar, refrescamos la lista desde la API
       const updatedRes = await fetch('/api/questions');
       const updatedData = await updatedRes.json();
-      
       setExtraQs(updatedData.questions || []);
       setErrType("success");
-      setErr(`✓ Preguntas añadidas correctamente a la nube`);
+      setErr(`✓ Preguntas añadidas correctamente`);
     } catch (e) {
       setErrType("error");
       setErr(`Error: ${e.message}`);
@@ -200,50 +185,38 @@ const available = useMemo(() =>
 
       {view !== "login" && (
         <>
-        <div style={S.header}>
-  <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
-    <div style={S.headerIcon}>
-      {appIcon ? (
-        <img src={appIcon} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }} alt="" />
-      ) : (
-        <span style={{ fontFamily: "'Playfair Display',serif", fontWeight: 800, fontSize: 16, color: "#C8A84B" }}>P</span>
-      )}
-    </div>
-    <div style={{ flex: 1 }}>
-      <p style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14, color: "#F5F0E8", margin: 0, lineHeight: 1.1 }}>
-        PAES Premium
-      </p>
-      
-      {/* Contador de preguntas */}
-      <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "#C8A84B", margin: "2px 0", fontWeight: 600 }}>
-        {attemptedIds?.length || 0} de {allQs?.length || 0} completadas
-      </p>
-
-      {/* Mini Barra de Progreso en el Título */}
-      <div style={{ width: "100%", maxWidth: "120px", height: "3px", background: "rgba(255,255,255,0.1)", borderRadius: "2px", marginTop: "4px", overflow: "hidden" }}>
-        <div style={{ 
-          width: `${allQs?.length > 0 ? ((attemptedIds?.length || 0) / allQs.length) * 100 : 0}%`, 
-          height: "100%", 
-          background: "#C8A84B", 
-          transition: "width 0.4s ease" 
-        }} />
-      </div>
-    </div>
-  </div>
-  
-  <div style={S.balancePill}>
-    <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, fontSize: 13, color: "#1a1a2e" }}>
-      {fmt(balance || 0)}
-    </span>
-  </div>
-</div>
-  
-  <div style={S.balancePill}>
-    <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, fontSize: 14, color: "#1a1a2e" }}>
-      {fmt(balance)}
-    </span>
-  </div>
-</div>
+          <div style={S.header}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
+              <div style={S.headerIcon}>
+                {appIcon ? (
+                  <img src={appIcon} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10 }} alt="" />
+                ) : (
+                  <span style={{ fontFamily: "'Playfair Display',serif", fontWeight: 800, fontSize: 16, color: "#C8A84B" }}>P</span>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 14, color: "#F5F0E8", margin: 0, lineHeight: 1.1 }}>
+                  PAES Premium
+                </p>
+                <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "#C8A84B", margin: "2px 0", fontWeight: 600 }}>
+                  {attemptedIds?.length || 0} de {allQs?.length || 0} completadas
+                </p>
+                <div style={{ width: "100%", maxWidth: "120px", height: "3px", background: "rgba(255,255,255,0.1)", borderRadius: "2px", marginTop: "4px", overflow: "hidden" }}>
+                  <div style={{ 
+                    width: `${allQs?.length > 0 ? ((attemptedIds?.length || 0) / allQs.length) * 100 : 0}%`, 
+                    height: "100%", 
+                    background: "#C8A84B", 
+                    transition: "width 0.4s ease" 
+                  }} />
+                </div>
+              </div>
+            </div>
+            <div style={S.balancePill}>
+              <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 600, fontSize: 13, color: "#1a1a2e" }}>
+                {fmt(balance || 0)}
+              </span>
+            </div>
+          </div>
 
           <div style={S.body}>
             {view === "home" && (
@@ -286,11 +259,10 @@ const available = useMemo(() =>
             {view === "test" && (
               <div className="fade">
                 {!currentQ ? (
-                  // --- MENSAJE DE FIN DE PREGUNTAS ---
                   <div style={{textAlign:"center", padding:"40px 20px"}}>
                     <div style={S.lockBox}><XCircle style={{width:32, height:32, color:"#991b1b"}} /></div>
                     <h2 style={{fontFamily:"'Playfair Display',serif", fontSize:26, color:"#1a1a2e", marginBottom:10}}>¡Sin preguntas nuevas!</h2>
-                    <p style={{fontFamily:"'DM Sans',sans-serif", color:"#9a8f7e", marginBottom:24, lineHeight:1.6}}>Has completado todos los desafíos disponibles por ahora.</p>
+                    <p style={{fontFamily:"'DM Sans',sans-serif", color:"#9a8f7e", marginBottom:24, lineHeight:1.6}}>Has completado todos los desafíos por ahora.</p>
                     <button onClick={() => setView("settings")} style={S.btnPrimary}>
                       <Sparkles style={{width:16, height:16}} /> Generar más con IA
                     </button>
@@ -391,7 +363,6 @@ const available = useMemo(() =>
                       <h2 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:20}}>Configuración</h2>
                       <button onClick={() => { setSettingsOpen(false); goHome(); }} style={S.closeBtn}>✕</button>
                     </div>
-
                     <div style={{background:"#fff",border:"1px solid #E8E5DC",borderLeft:"4px solid #C8A84B",borderRadius:"0 12px 12px 0",padding:18,marginBottom:14}}>
                       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
                         <Sparkles style={{width:15,height:15,color:"#C8A84B"}} />
@@ -400,13 +371,9 @@ const available = useMemo(() =>
                       {err && <p style={{...S.errBanner, borderColor: errType==="success"?"#86efac":"#fca5a5", background: errType==="success"?"#f0faf4":"#fff5f5"}}>{err}</p>}
                       <button onClick={generateWithAI} disabled={generating} style={generating ? S.btnDisabled : S.btnPrimary}>
                         {generating ? <Loader2 style={{width:14,height:14,animation:"spin 1s linear infinite"}} /> : <Wand2 style={{width:14,height:14}} />}
-                        {generating ? "Guardando en Vercel..." : "Generar 3 Preguntas PAES"}
+                        {generating ? "Guardando..." : "Generar 3 Preguntas PAES"}
                       </button>
-                      <p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:"#bbb5a8",marginTop:10,textAlign:"center"}}>
-                        {extraQs.length} en KV · {allQs.length} total
-                      </p>
                     </div>
-
                     <button onClick={resetAll} style={{width:"100%",background:"#fff5f5",border:"1px solid #fca5a5",color:"#991b1b",borderRadius:11,padding:"13px",fontSize:13,fontWeight:600,marginBottom:10}}>Reiniciar Progreso</button>
                     <button onClick={() => { setSettingsOpen(false); goHome(); }} style={{...S.btnGhost,width:"100%"}}>Cerrar</button>
                   </div>
@@ -419,7 +386,7 @@ const available = useMemo(() =>
                 <div style={{width:88,height:88,background:"#fffbf0",border:"2px solid #C8A84B",borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
                   <Trophy style={{width:44,height:44,color:"#C8A84B"}} />
                 </div>
-                <h2 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:28,marginBottom:8}}>¡Entrenamiento<br/>Completo!</h2>
+                <h2 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:28,marginBottom:8}}>¡Entrenamiento Completo!</h2>
                 <div style={{background:"#fff",border:"1px solid #E8E5DC",borderRadius:18,padding:"24px 20px",marginBottom:20}}>
                   <p style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:40,color:"#C8A84B"}}>{fmt(balance)}</p>
                   <p style={{fontSize:11,color:"#9a8f7e",textTransform:"uppercase"}}>Dinero Total</p>
@@ -438,7 +405,6 @@ const available = useMemo(() =>
   );
 }
 
-// --- ESTILOS (S) ---
 const S = {
   root:         { minHeight:"100vh", background:"#FAFAF7", fontFamily:"'DM Sans',sans-serif", color:"#1a1a2e" },
   center:       { minHeight:"100vh", background:"#FAFAF7", display:"flex", alignItems:"center", justifyContent:"center" },
@@ -453,7 +419,7 @@ const S = {
   btnSecondary: { width:"100%", background:"#fff", border:"1px solid #E8E5DC", color:"#1a1a2e", fontWeight:600, fontSize:14, padding:"13px 18px", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
   btnGhost:     { background:"transparent", border:"1px solid #E8E5DC", color:"#9a8f7e", fontWeight:500, fontSize:13, padding:"11px 16px", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
   btnDisabled:  { width:"100%", maxWidth:320, background:"#E8E5DC", color:"#bbb5a8", fontFamily:"'Playfair Display',serif", fontWeight:700, fontSize:15, padding:"15px 20px", borderRadius:11, display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
-  header:       { background:"#1a1a2e", borderBottom:"3px solid #C8A84B", padding:"14px 22px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"fixed", top:0, left:0, right:0, zIndex:40 },
+  header:       { background:"#1a1a2e", borderBottom:"3px solid #C8A84B", padding:"10px 22px", display:"flex", justifyContent:"space-between", alignItems:"center", position:"fixed", top:0, left:0, right:0, zIndex:40, height: "80px" },
   headerIcon:   { width:40, height:40, background:"rgba(200,168,75,0.15)", border:"1px solid rgba(200,168,75,0.4)", borderRadius:10, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" },
   balancePill:  { background:"#C8A84B", padding:"7px 16px", borderRadius:20 },
   body:         { maxWidth:"95%", margin:"0 auto", padding:"24px 18px", paddingTop:"100px" },
