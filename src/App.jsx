@@ -54,7 +54,7 @@ export default function App() {
         const res = await fetch('/api/questions');
         const data = await res.json();
         if (data.questions) setExtraQs(data.questions);
-      } catch (e) { console.error("Error inicial:", e); }
+      } catch (e) { console.error("Error:", e); }
       setReady(true);
     })();
   }, []);
@@ -68,27 +68,16 @@ export default function App() {
   const available = useMemo(() => isReview ? allQs : allQs.filter(q => q && q.id && !attemptedIds.includes(q.id)), [allQs, attemptedIds, isReview]);
   const currentQ = available[qIdx] || null;
 
-  const goHome = () => { setView("home"); setSelected(null); setConfirmed(null); setShowExp(false); setCorrect(null); setErr(""); };
+  const goHome = () => { setView("home"); setSettingsOpen(false); setSelected(null); setConfirmed(null); setShowExp(false); setCorrect(null); setErr(""); };
 
   const confirmAnswer = async () => {
     if (!selected || showExp || !currentQ) return;
     const isC = selected === currentQ.correct;
     const rate = rates[currentQ.difficulty] || 100;
-    
-    setCorrect(isC); 
-    setConfirmed(selected); 
-    setShowExp(true);
-
-    // Lógica corregida para IDs únicos
+    setCorrect(isC); setConfirmed(selected); setShowExp(true);
     const nAtt = attemptedIds.includes(currentQ.id) ? attemptedIds : [...attemptedIds, currentQ.id];
     const nComp = (isC && !completedIds.includes(currentQ.id)) ? [...completedIds, currentQ.id] : completedIds;
-    
-    const nBal = (isC && !completedIds.includes(currentQ.id)) 
-      ? balance + rate 
-      : (!isC && !completedIds.includes(currentQ.id)) 
-        ? Math.max(0, balance - rate * 0.5) 
-        : balance;
-
+    const nBal = (isC && !completedIds.includes(currentQ.id)) ? balance + rate : (!isC && !completedIds.includes(currentQ.id)) ? Math.max(0, balance - rate * 0.5) : balance;
     setAttempted(nAtt); setCompleted(nComp); setBalance(nBal);
     await persist({ balance: nBal, completedIds: nComp, attemptedIds: nAtt });
   };
@@ -103,15 +92,11 @@ export default function App() {
     if (generating) return;
     setGenerating(true); setErr("");
     try {
-      await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ system: AI_SYSTEM, messages: [{ role: "user", content: AI_USER }] })
-      });
-      const updatedRes = await fetch('/api/questions');
-      const updatedData = await updatedRes.json();
-      setExtraQs(updatedData.questions || []);
-      setErrType("success"); setErr("✓ ¡Preguntas añadidas!");
+      await fetch("/api/generate", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({system:AI_SYSTEM, messages:[{role:"user", content:AI_USER}]}) });
+      const res = await fetch('/api/questions');
+      const data = await res.json();
+      setExtraQs(data.questions || []);
+      setErrType("success"); setErr("✓ ¡Preguntas listas!");
     } catch (e) { setErrType("error"); setErr("Error al generar"); }
     finally { setGenerating(false); }
   };
@@ -128,7 +113,12 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  const accuracy = attemptedIds.length > 0 ? Math.round((completedIds.length / attemptedIds.length) * 100) : 0;
+  const resetAll = async () => {
+    if (!confirm("¿Reiniciar progreso?")) return;
+    setBalance(0); setCompleted([]); setAttempted([]);
+    await persist({ balance: 0, completedIds: [], attemptedIds: [] });
+    goHome();
+  };
 
   if (!ready) return <div style={S.center}><Loader2 style={{animation:"spin 1s linear infinite"}} color="#C8A84B" /></div>;
 
@@ -164,11 +154,11 @@ export default function App() {
         {view === "login" && (
           <div style={S.loginWrap} className="fade">
             <div style={S.loginIconBox}>
-               {appIcon ? <img src={appIcon} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:16}} /> : <span style={{fontFamily:"'Playfair Display',serif",fontWeight:800,fontSize:26,color:"#C8A84B"}}>P</span>}
+               {appIcon ? <img src={appIcon} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:16}} /> : <span style={{fontWeight:800,fontSize:26,color:"#C8A84B"}}>P</span>}
             </div>
             <h1 style={S.bigTitle}>PAES<br/>Premium</h1>
-            <input type="password" value={loginPass} placeholder="Contraseña" onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === "Enter" && (loginPass === "ElaEdionda" ? setView("home") : setErr("Incorrecta"))} style={S.loginInput} />
-            <button onClick={() => loginPass === "ElaEdionda" ? setView("home") : setErr("Incorrecta")} style={S.btnPrimary}>Ingresar</button>
+            <input type="password" value={loginPass} placeholder="Contraseña" onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === "Enter" && (loginPass === "ElaEdionda" ? setView("home") : setErr("X"))} style={S.loginInput} />
+            <button onClick={() => loginPass === "ElaEdionda" ? setView("home") : setErr("X")} style={S.btnPrimary}>Ingresar</button>
           </div>
         )}
 
@@ -190,20 +180,20 @@ export default function App() {
         {view === "test" && (
           <div className="fade">
             {!currentQ ? (
-              <div style={{textAlign:"center", padding:"40px 20px"}}>
+              <div style={{textAlign:"center", padding:40}}>
                 <XCircle size={48} color="#991b1b" style={{margin:"0 auto 16px"}} />
-                <h2 style={{fontFamily:"'Playfair Display',serif", marginBottom:20}}>¡Sin preguntas nuevas!</h2>
-                <button onClick={() => setView("settings")} style={S.btnPrimary}>Generar más con IA</button>
-                <button onClick={goHome} style={{...S.btnGhost, marginTop:12, width:"100%"}}>Volver</button>
+                <h2>¡Sin preguntas!</h2>
+                <button onClick={() => setView("settings")} style={S.btnPrimary}>Generar con IA</button>
+                <button onClick={goHome} style={S.btnGhost}>Volver</button>
               </div>
             ) : (
               <>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:18}}>
                   <button onClick={goHome} style={S.backBtn}><ArrowLeft size={16}/></button>
-                  <span style={{fontSize:10,fontWeight:700,padding:"4px 12px",borderRadius:8,color:DIFF_LIGHT[currentQ.difficulty]?.color,background:DIFF_LIGHT[currentQ.difficulty]?.bg}}>{currentQ.difficulty}</span>
+                  <span style={{color:DIFF_LIGHT[currentQ.difficulty]?.color,background:DIFF_LIGHT[currentQ.difficulty]?.bg,padding:"4px 12px",borderRadius:8,fontSize:10,fontWeight:700}}>{currentQ.difficulty}</span>
                 </div>
                 <div style={S.passage}>{currentQ.text}</div>
-                <h3 style={{fontFamily:"'Playfair Display',serif", fontSize:18, marginBottom:20}}>{currentQ.question}</h3>
+                <h3 style={{marginBottom:20}}>{currentQ.question}</h3>
                 <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
                   {currentQ.options.map(opt => (
                     <button key={opt.id} disabled={!!showExp} onClick={() => setSelected(opt.id)} style={{
@@ -211,7 +201,7 @@ export default function App() {
                       border: selected===opt.id ? "2px solid #C8A84B" : "1px solid #E8E5DC",
                       padding:16, borderRadius:14, textAlign:"left", display:"flex", gap:12
                     }}>
-                      <span style={{fontWeight:800}}>{opt.id}</span><span>{opt.text}</span>
+                      <strong>{opt.id}</strong><span>{opt.text}</span>
                     </button>
                   ))}
                 </div>
@@ -220,11 +210,8 @@ export default function App() {
                   <>
                     <div style={S.modalBackdrop} />
                     <div style={{...S.modalCard, borderColor:correct?"#86efac":"#fca5a5", background:correct?"#f0faf4":"#fff5f5"}}>
-                      {(correct ? successImage : errorImage) 
-                        ? <img src={correct ? successImage : errorImage} style={{width:"100%",maxWidth:150,borderRadius:12}} />
-                        : correct ? <CheckCircle size={48} color="#2d6a4f"/> : <XCircle size={48} color="#991b1b"/>
-                      }
-                      <p style={{fontSize:14, textAlign:"center", lineHeight:1.6}}>{currentQ.explanation}</p>
+                      {(correct ? successImage : errorImage) ? <img src={correct ? successImage : errorImage} style={{width:"100%",maxWidth:150,borderRadius:12}} /> : (correct ? <CheckCircle size={48} color="#2d6a4f"/> : <XCircle size={48} color="#991b1b"/>)}
+                      <p style={{fontSize:14, textAlign:"center"}}>{currentQ.explanation}</p>
                       <button onClick={nextQ} style={S.btnPrimary}>Siguiente</button>
                     </div>
                   </>
@@ -239,7 +226,7 @@ export default function App() {
             {!settingsOpen ? (
               <div style={{textAlign:"center", padding:20}}>
                 <Lock size={40} color="#C8A84B" style={{margin:"0 auto 16px"}}/>
-                <h2 style={{fontFamily:"'Playfair Display',serif", marginBottom:20}}>Acceso Parental</h2>
+                <h2 style={{marginBottom:20}}>Acceso Parental</h2>
                 <input type="password" value={settingsPass} onChange={e=>setSettingsPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(settingsPass==="camboropaes"?setSettingsOpen(true):setErr("!"))} style={S.loginInput}/>
                 <button onClick={()=>settingsPass==="camboropaes"?setSettingsOpen(true):setErr("!")} style={S.btnPrimary}>Entrar</button>
                 <button onClick={goHome} style={S.btnGhost}>Volver</button>
@@ -247,9 +234,9 @@ export default function App() {
             ) : (
               <div style={{display:"flex", flexDirection:"column", gap:16}}>
                 <div style={{background:"#fff", border:"1px solid #E8E5DC", borderRadius:16, padding:20, borderLeft:"5px solid #C8A84B"}}>
-                   <h3 style={{fontFamily:"'Playfair Display',serif", marginBottom:12}}>IA de Generación</h3>
+                   <h3 style={{marginBottom:12}}>IA de Generación</h3>
                    <button onClick={generateWithAI} disabled={generating} style={generating?S.btnDisabled:S.btnPrimary}>
-                    {generating ? <Loader2 className="spin" size={16}/> : <Wand2 size={16}/>} {generating?"Guardando...":"Generar 3 Preguntas"}
+                    {generating ? <Loader2 style={{animation:"spin 1s linear infinite"}} size={16}/> : <Wand2 size={16}/>} {generating?"Guardando...":"Generar 3 Preguntas"}
                    </button>
                 </div>
                 <div style={{background:"#fff", border:"1px solid #E8E5DC", borderRadius:16, padding:16}}>
@@ -274,20 +261,21 @@ export default function App() {
                     </label>
                   ))}
                 </div>
-                <button onClick={() => { setSettingsOpen(false); goHome(); }} style={S.btnPrimary}>Cerrar</button>
-              </div>
-            )}
-
-            {view === "results" && (
-              <div className="fade" style={{textAlign:"center"}}>
-                <Trophy size={60} color="#C8A84B" style={{margin:"0 auto 20px"}}/>
-                <h2 style={{fontFamily:"'Playfair Display',serif"}}>¡Completado!</h2>
-                <div style={{background:"#fff", padding:30, borderRadius:20, margin:"24px 0"}}><p style={{fontSize:36, fontWeight:800}}>{fmt(balance)}</p></div>
-                <button onClick={goHome} style={S.btnPrimary}>Volver al Inicio</button>
+                <button onClick={resetAll} style={{color:"#991b1b", background:"#fff5f5", padding:14, borderRadius:12}}>Reiniciar Todo</button>
+                <button onClick={goHome} style={S.btnPrimary}>Guardar y Salir</button>
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {view === "results" && (
+          <div className="fade" style={{textAlign:"center"}}>
+            <Trophy size={60} color="#C8A84B" style={{margin:"0 auto 20px"}}/>
+            <h2 style={{fontSize:28}}>¡Completado!</h2>
+            <div style={{background:"#fff", padding:30, borderRadius:20, margin:"24px 0"}}><p style={{fontSize:36, fontWeight:800}}>{fmt(balance)}</p></div>
+            <button onClick={goHome} style={S.btnPrimary}>Volver al Inicio</button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -299,7 +287,7 @@ const S = {
   loginWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 28 },
   loginIconBox: { width: 80, height: 80, background: "#1a1a2e", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, border: "3px solid #C8A84B", overflow:"hidden" },
   bigTitle: { fontFamily: "'Playfair Display', serif", fontSize: 48, textAlign: "center", lineHeight: 1, marginBottom: 24 },
-  loginInput: { width: "100%", maxWidth: 320, background: "#fff", border: "2px solid #E8E5DC", borderRadius: 14, padding: 14, fontSize: 16, textAlign: "center", marginBottom: 12 },
+  loginInput: { width: "100%", maxWidth: 320, background: "#fff", border: "2px solid #E8E5DC", borderRadius: 14, padding: 14, fontSize: 16, textAlign: "center", marginBottom: 12, outline:"none" },
   btnPrimary: { width: "100%", maxWidth: 320, background: "#1a1a2e", color: "#F5F0E8", fontWeight: 700, padding: 16, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "0 auto" },
   btnSecondary: { width: "100%", background: "#fff", border: "1px solid #E8E5DC", color: "#1a1a2e", fontWeight: 600, padding: 14, borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 },
   btnGhost: { background: "transparent", color: "#9a8f7e", padding: 10, fontWeight: 500, fontSize: 13, border: "none" },
