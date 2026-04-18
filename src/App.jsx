@@ -9,17 +9,13 @@ import AdminPanel from "./AdminPanel";
 import Login from "./Login";
 import Home from "./Home";
 import QuestionView from "./QuestionView";
+import { S, DIFF_LIGHT } from "./styles";
 
 import { STATIC_QUESTIONS, DIFF, RATES, AI_SYSTEM, AI_USER } from "./questions";
 /* 17/04*/
 const DOC_REF = doc(db, "progreso", "usuario-principal");
 const fmt = (v) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
-const DIFF_LIGHT = {
-  Fácil: { color: "#2d6a4f", bg: "#d8f3dc", border: "#b7e4c7" },
-  Intermedio: { color: "#92601a", bg: "#fef3c7", border: "#fcd34d" },
-  Difícil: { color: "#991b1b", bg: "#fee2e2", border: "#fca5a5" },
-};
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -43,7 +39,7 @@ export default function App() {
   const [err, setErr] = useState("");
   const [errType, setErrType] = useState("error");
   const [generating, setGenerating] = useState(false);
-  const [rates, setRates] = useState({ Fácil: 100, Intermedio: 300, Difícil: 500 });
+  const [rates, setRates] = useState({ Fácil: 50, Intermedio: 150, Difícil: 250 });
 
   useEffect(() => {
     (async () => {
@@ -96,10 +92,20 @@ export default function App() {
     await persist({ balance: newBalance, completedIds: newCompleted, attemptedIds: newAttempted });
   };
 
-  const nextQ = () => {
-    if (available.length === 0) { setView("results"); return; }
+const nextQ = () => {
+    // Esto asegura que la pantalla vuelva arriba al cambiar de pregunta
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (available.length === 0) { 
+      setView("results"); 
+      return; 
+    }
+    
     setQIdx(isReview ? (p => (p + 1) % available.length) : 0);
-    setSelected(null); setConfirmed(null); setShowExp(false); setCorrect(null);
+    setSelected(null); 
+    setConfirmed(null); 
+    setShowExp(false); 
+    setCorrect(null);
   };
 
  const generateWithAI = async () => {
@@ -299,32 +305,3 @@ export default function App() {
   );
 }
 
-const S = {
-  root: { minHeight: "100vh", background: "#FAFAF7", fontFamily: "'DM Sans',sans-serif", color: "#1a1a2e" },
-  center: { minHeight: "100vh", background: "#FAFAF7", display: "flex", alignItems: "center", justifyContent: "center" },
-  loginWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 28, background: "#FAFAF7" },
-  loginIconBox: { width: 78, height: 78, background: "#1a1a2e", border: "3px solid #C8A84B", borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 22, overflow: "hidden" },
-  eyebrow: { fontFamily: "'DM Sans',sans-serif", fontSize: 10, fontWeight: 600, letterSpacing: "0.2em", textTransform: "uppercase", color: "#C8A84B", marginBottom: 10 },
-  bigTitle: { fontFamily: "'Playfair Display',serif", fontWeight: 800, fontSize: 52, lineHeight: 1, textAlign: "center", color: "#1a1a2e", marginBottom: 10 },
-  subtitle: { fontFamily: "'DM Sans',sans-serif", fontSize: 14, color: "#9a8f7e", marginBottom: 32, textAlign: "center" },
-  loginInput: { width: "100%", maxWidth: 320, background: "#fff", border: "1px solid #E8E5DC", borderRadius: 11, padding: "14px 18px", fontSize: 15, color: "#1a1a2e", textAlign: "center", letterSpacing: "0.3em", outline: "none", marginBottom: 12, display: "block", boxShadow: "0 1px 4px rgba(0,0,0,0.05)" },
-  errBanner: { background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: 9, padding: "9px 14px", fontSize: 12, color: "#991b1b", textAlign: "center", marginBottom: 12, width: "100%", maxWidth: 320, fontFamily: "'DM Sans',sans-serif" },
-  btnPrimary: { width: "100%", maxWidth: 320, background: "#1a1a2e", color: "#F5F0E8", fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, padding: "15px 20px", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 2px 8px rgba(26,26,46,0.18)" },
-  btnSecondary: { width: "100%", background: "#fff", border: "1px solid #E8E5DC", color: "#1a1a2e", fontFamily: "'DM Sans',sans-serif", fontWeight: 600, fontSize: 14, padding: "13px 18px", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
-  btnGhost: { background: "transparent", border: "1px solid #E8E5DC", color: "#9a8f7e", fontFamily: "'DM Sans',sans-serif", fontWeight: 500, fontSize: 13, padding: "11px 16px", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 },
-  btnDisabled: { width: "100%", maxWidth: 320, background: "#E8E5DC", color: "#bbb5a8", fontFamily: "'Playfair Display',serif", fontWeight: 700, fontSize: 15, padding: "15px 20px", borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 },
-  header: { background: "#1a1a2e", borderBottom: "3px solid #C8A84B", padding: "14px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "fixed", top: 0, left: 0, right: 0, zIndex: 40, boxShadow: "0 4px 20px rgba(26,26,46,0.25)" },
-  headerIcon: { width: 40, height: 40, background: "rgba(200,168,75,0.15)", border: "1px solid rgba(200,168,75,0.4)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" },
-  balancePill: { background: "#C8A84B", padding: "7px 16px", borderRadius: 20 },
-  body: { maxWidth: "95%", margin: "0 auto", padding: "24px 18px", paddingTop: "100px" },
-  statsRow: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 },
-  statCard: { background: "#fff", border: "1px solid #E8E5DC", borderRadius: 13, padding: "14px 10px", display: "flex", flexDirection: "column", alignItems: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" },
-  progWrap: { height: 5, background: "#E8E5DC", borderRadius: 4, overflow: "hidden", marginBottom: 7 },
-  progBar: { height: "100%", background: "linear-gradient(90deg,#C8A84B,#2d6a4f)", borderRadius: 4, transition: "width 0.5s ease" },
-  backBtn: { background: "#fff", border: "1px solid #E8E5DC", borderRadius: 9, padding: "7px 9px", display: "flex", alignItems: "center", color: "#9a8f7e", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
-  passage: { background: "#fff", borderLeft: "4px solid #C8A84B", borderTop: "1px solid #E8E5DC", borderRight: "1px solid #E8E5DC", borderBottom: "1px solid #E8E5DC", borderRadius: "0 12px 12px 0", padding: "16px 18px", marginBottom: 18, boxShadow: "0 1px 6px rgba(0,0,0,0.05)" },
-  lockBox: { width: 60, height: 60, background: "#fffbf0", border: "2px solid #C8A84B", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" },
-  closeBtn: { background: "#fff", border: "1px solid #E8E5DC", borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", color: "#9a8f7e", fontSize: 13, cursor: "pointer" },
-  modalBackdrop: { position: "fixed", inset: 0, background: "rgba(26,26,46,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", zIndex: 50 },
-  modalCard: { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 51, width: "calc(100% - 48px)", maxWidth: 380, border: "2px solid", borderRadius: 24, padding: "32px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards", boxShadow: "0 24px 60px rgba(0,0,0,0.15)" },
-};
