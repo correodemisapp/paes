@@ -111,55 +111,71 @@ const nextQ = () => {
     setCorrect(null);
   };
 
- const generateWithAI = async () => {
-    if (generating) return;
-    setGenerating(true); setErr(""); setErrType("error");
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: AI_SYSTEM,
-          messages: [{ role: "user", content: AI_USER }]
-        })
-      });
+const generateWithAI = async () => {
+  if (generating) return;
+  setGenerating(true); setErr(""); setErrType("error");
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system: AI_SYSTEM,
+        messages: [{ role: "user", content: AI_USER }]
+      })
+    });
 
-      if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
+    if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
 
-      const data = await res.json();
-      
-      // --- Lógica de extracción inteligente ---
-      let parsed;
-      if (data.questions) {
-        // Caso 1: La API ya devolvió el JSON limpio
-        parsed = data;
-      } else {
-        // Caso 2: La respuesta viene con texto extra (Claude/OpenAI raw)
-        const text = data.content?.map(b => b.text).join("") || data.text || JSON.stringify(data);
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("La IA no envió un formato válido");
-        parsed = JSON.parse(jsonMatch[0]);
-      }
+    const data = await res.json();
+    
+    // 1. ESPÍA: Imprimimos la respuesta real para ver qué envía Gemini
+    console.log("RAW DATA DE IA:", data);
 
-      if (!parsed.questions || !Array.isArray(parsed.questions)) {
-        throw new Error("Formato de preguntas incorrecto");
-      }
+    let rawText = "";
+    // Extraemos el texto según la estructura que devuelva tu API
+    if (data.questions) {
+      rawText = JSON.stringify(data);
+    } else {
+      rawText = data.content?.map(b => b.text).join("") || data.text || JSON.stringify(data);
+    }
 
-      const ts = Date.now();
-      const newQs = parsed.questions.map((q, i) => ({ ...q, id: `gen_${ts}_${i}` }));
-      const updated = [...extraQs, ...newQs];
-      
-      setExtraQs(updated);
-      await persist({ extraQs: updated });
-      
-      setErrType("success");
-      setErr(`✓ ${newQs.length} preguntas añadidas correctamente`);
-    } catch (e) {
-      console.error("Error IA:", e);
-      setErrType("error");
-      setErr(`Error: ${e.message}`);
-    } finally { setGenerating(false); }
-  };
+    // 2. LIMPIEZA: Quitamos bloques de código Markdown (```json ... ```) que rompen el parseo
+    const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    // 3. EXTRACCIÓN: Buscamos el objeto JSON dentro del texto
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("La IA no envió un formato JSON válido");
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // 4. FLEXIBILIDAD: Detectamos si las preguntas vienen como array o en un campo
+    const rawQs = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.preguntas || []);
+
+    if (rawQs.length === 0) {
+      throw new Error("No se encontraron preguntas en la respuesta");
+    }
+
+    // 5. NORMALIZACIÓN: Aseguramos que cada pregunta tenga ID y dificultad
+    const ts = Date.now();
+    const newQs = rawQs.map((q, i) => ({ 
+      ...q, 
+      id: `gen_${ts}_${i}`,
+      difficulty: q.difficulty || "Intermedio"
+    }));
+
+    const updated = [...extraQs, ...newQs];
+    setExtraQs(updated);
+    await persist({ extraQs: updated });
+    
+    setErrType("success");
+    setErr(`✓ ${newQs.length} preguntas añadidas correctamente`);
+  } catch (e) {
+    console.error("DETALLE ERROR IA:", e);
+    setErrType("error");
+    setErr(`Error: ${e.message}`);
+  } finally { setGenerating(false); }
+};
+
 
   const uploadImg = (e, type) => {
     const file = e.target.files[0]; if (!file) return;
@@ -244,7 +260,7 @@ const nextQ = () => {
         
         input::placeholder{color:#bbb5a8}
       `}</style>
-      
+
 
       {view === "login" && (
         <Login
