@@ -2,6 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { Trophy, Settings, ChevronRight, Brain, Lock, History, Send, Layers, Loader2, Sparkles, Upload, Wand2, ArrowLeft, Zap, XCircle, CheckCircle } from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
+import Header from "./Header";
+import Results from "./Results";
+import FeedbackModal from "./FeedbackModal";
+import AdminPanel from "./AdminPanel"; 
+import Login from "./Login";
+import Home from "./Home";
+import QuestionView from "./QuestionView";
+
 import { STATIC_QUESTIONS, DIFF, RATES, AI_SYSTEM, AI_USER } from "./questions";
 /* 17/04*/
 const DOC_REF = doc(db, "progreso", "usuario-principal");
@@ -179,296 +187,95 @@ export default function App() {
         input::placeholder{color:#bbb5a8}
       `}</style>
 
-      {view === "login" && (
-        <div style={S.loginWrap} className="fade">
-          <div style={S.loginIconBox}>
-            {appIcon
-              ? <img src={appIcon} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:16}} alt="" />
-              : <span style={{fontFamily:"'Playfair Display',serif",fontWeight:800,fontSize:26,color:"#C8A84B"}}>P</span>}
-          </div>
-          <p style={S.eyebrow}>Competencia Lectora · Chile</p>
-          <h1 style={S.bigTitle}>PAES<br/>Premium</h1>
-          <p style={S.subtitle}>Tu entrenador personal de lectura</p>
-          {err && <p style={S.errBanner}>{err}</p>}
-          <input type="password" value={loginPass} placeholder="Contraseña"
-            onChange={e => { setLoginPass(e.target.value); setErr(""); }}
-            onKeyDown={e => e.key === "Enter" && (loginPass === "ElaEdionda" ? setView("home") : setErr("Clave incorrecta"))}
-            style={S.loginInput}
+        {view === "login" && (
+          <Login 
+            loginPass={loginPass}
+            setLoginPass={setLoginPass}
+            setView={setView}
+            setErr={setErr}
+            err={err}
+            appIcon={appIcon}
+            S={S}
           />
-          <button onClick={() => loginPass === "ElaEdionda" ? setView("home") : setErr("Clave incorrecta")} style={S.btnPrimary}>
-            Ingresar <ChevronRight style={{width:18,height:18}} />
-          </button>
-          <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#ccc4b5",marginTop:24,letterSpacing:"0.08em"}}>— uso exclusivo —</p>
-        </div>
-      )}
+        )}
 
       {view !== "login" && (
         <>
-          <div style={S.header}>
-            <div style={{display:"flex",alignItems:"center",gap:12}}>
-              <div style={S.headerIcon}>
-                {appIcon
-                  ? <img src={appIcon} style={{width:"100%",height:"100%",objectFit:"cover",borderRadius:10}} alt="" />
-                  : <span style={{fontFamily:"'Playfair Display',serif",fontWeight:800,fontSize:16,color:"#C8A84B"}}>P</span>}
-              </div>
-              <div>
-                <p style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:15,color:"#F5F0E8",margin:0,lineHeight:1.2}}>PAES Premium</p>
-                <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"#C8A84B",margin:0,letterSpacing:"0.15em",textTransform:"uppercase"}}>Competencia Lectora</p>
-              </div>
-            </div>
-            <div style={S.balancePill}>
-              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:14,color:"#1a1a2e"}}>
-                {fmt(balance)}
-              </span>
-            </div>
-          </div>
+          <Header 
+            appIcon={appIcon} 
+            attemptedIds={attemptedIds} 
+            allQs={allQs} 
+            balance={balance} 
+            fmt={fmt} 
+            S={S} 
+          />
 
           <div style={S.body}>
 
             {view === "home" && (
-              <div className="fade">
-                <div style={S.statsRow}>
-                  {[
-                    { icon:<Layers style={{width:15,height:15,color:"#9a8f7e",marginBottom:6}}/>, val:`${attemptedIds.length}`, sub:`/${allQs.length}`, label:"Respondidas", col:"#1a1a2e" },
-                    { icon:<Trophy style={{width:15,height:15,color:"#C8A84B",marginBottom:6}}/>, val:`${completedIds.length}`, label:"Correctas", col:"#92601a" },
-                    { icon:<Zap    style={{width:15,height:15,color:"#2d6a4f",marginBottom:6}}/>, val:`${accuracy}%`, label:"Precisión", col:"#2d6a4f" },
-                  ].map((s,i) => (
-                    <div key={i} style={S.statCard}>
-                      {s.icon}
-                      <p style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:22,color:s.col,lineHeight:1,marginBottom:4}}>
-                        {s.val}<span style={{fontSize:11,color:"#bbb5a8",fontWeight:400}}>{s.sub||""}</span>
-                      </p>
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"#9a8f7e",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:600}}>{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <div style={S.progWrap}>
-                  <div style={{...S.progBar, width:`${allQs.length > 0 ? (attemptedIds.length / allQs.length) * 100 : 0}%`}} />
-                </div>
-                <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e",textAlign:"right",marginBottom:28}}>
-                  {allQs.length - attemptedIds.length} pendientes
-                </p>
-                <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                  <button disabled={available.length === 0} onClick={() => { setIsReview(false); setQIdx(0); setView("test"); }} style={available.length === 0 ? S.btnDisabled : S.btnPrimary}>
-                    Iniciar Entrenamiento <ChevronRight style={{width:18,height:18}} />
-                  </button>
-                  <button onClick={() => { setIsReview(true); setQIdx(0); setView("test"); }} style={S.btnSecondary}>
-                    <History style={{width:15,height:15}} /> Repasar Todo
-                  </button>
-                  <button onClick={() => setView("settings")} style={S.btnGhost}>
-                    <Settings style={{width:13,height:13}} /> Configuración Parental
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {view === "test" && currentQ && (() => {
-              const d = DIFF_LIGHT[currentQ.difficulty] || DIFF_LIGHT.Fácil;
-              return (
-                <div className="fade">
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
-                    <button onClick={goHome} style={S.backBtn}><ArrowLeft style={{width:14,height:14}} /></button>
-                    <span style={{fontSize:10,fontWeight:600,letterSpacing:"0.08em",textTransform:"uppercase",padding:"4px 12px",borderRadius:6,color:d.color,background:d.bg,border:`1px solid ${d.border}`,fontFamily:"'DM Sans',sans-serif"}}>
-                      {currentQ.difficulty}
-                    </span>
-                    <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e",fontWeight:500}}>{currentQ.category}</span>
-                  </div>
-
-                  <div style={S.passage}>
-                    <div style={{maxHeight:220, overflowY:"auto"}}>
-                      {currentQ.text.split("\n\n").map((p, i, arr) => (
-                        <p key={i} style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#3d3628",lineHeight:1.85,marginBottom:i < arr.length-1 ? 12 : 0,fontStyle:"italic"}}>
-                          {p}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-
-                  <h3 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:17,color:"#1a1a2e",lineHeight:1.4,marginBottom:16}}>
-                    {currentQ.question}
-                  </h3>
-
-                  <div style={{display:"flex",flexDirection:"column",gap:9,marginBottom:18}}>
-                    {currentQ.options.map(opt => {
-                      const isConf  = confirmed === opt.id;
-                      const isRight = showExp && opt.id === currentQ.correct;
-                      let bg="#fff", border="1px solid #E8E5DC", lBg="#f0ede4", lCol="#9a8f7e";
-                      if (!showExp && selected === opt.id) { bg="#fffbf0"; border="1px solid #C8A84B"; lBg="#1a1a2e"; lCol="#C8A84B"; }
-                      if (isConf && correct)              { bg="#f0faf4"; border="1px solid #86efac"; lBg="#2d6a4f"; lCol="#fff"; }
-                      if (isConf && !correct)             { bg="#fff5f5"; border="1px solid #fca5a5"; lBg="#991b1b"; lCol="#fff"; }
-                      if (isRight && !isConf)             { bg="#f0faf4"; border="1px solid #86efac"; lBg="#2d6a4f"; lCol="#fff"; }
-                      return (
-                        <button key={opt.id} disabled={!!showExp} onClick={() => setSelected(opt.id)}
-                          style={{background:bg,border,borderRadius:11,padding:"12px 14px",display:"flex",alignItems:"flex-start",gap:12,textAlign:"left",transition:"all 0.15s",boxShadow:"0 1px 3px rgba(0,0,0,0.04)"}}>
-                          <span style={{width:30,height:30,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",background:lBg,color:lCol,fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:12,flexShrink:0,marginTop:1,transition:"all 0.15s"}}>
-                            {opt.id}
-                          </span>
-                          <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#3d3628",fontWeight:500,lineHeight:1.55}}>
-                            {opt.text}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <button disabled={!selected} onClick={confirmAnswer} style={!selected ? S.btnDisabled : S.btnPrimary}>
-                    <Send style={{width:16,height:16}} /> Confirmar Respuesta
-                  </button>
-
-                  {showExp && (
-                    <>
-                      <div style={S.modalBackdrop} />
-                      <div style={{...S.modalCard, borderColor:correct?"#86efac":"#fca5a5", background:correct?"#f0faf4":"#fff5f5"}}>
-                        {(correct ? successImage : errorImage)
-                          ? <img src={correct?successImage:errorImage} style={{width:"100%",maxWidth:180,borderRadius:12,objectFit:"contain"}} alt="" />
-                          : correct
-                            ? <CheckCircle style={{width:52,height:52,color:"#2d6a4f"}} />
-                            : <XCircle    style={{width:52,height:52,color:"#991b1b"}} />
-                        }
-                        <p style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:22,color:correct?"#2d6a4f":"#991b1b",textAlign:"center"}}>
-                          {correct ? "¡Correcto!" : "¡Ánimo, tú puedes!"}
-                        </p>
-                        <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#5a5040",textAlign:"center",lineHeight:1.8,maxWidth:300}}>
-                          {currentQ.explanation}
-                        </p>
-                        <button onClick={nextQ} style={{...S.btnPrimary, width:"100%", background:correct?"#2d6a4f":"#1a1a2e"}}>
-                          Siguiente pregunta <ChevronRight style={{width:16,height:16}} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-
-            {view === "settings" && (
-              <div className="fade">
-                {!settingsOpen ? (
-                  <div style={{textAlign:"center",paddingTop:32}}>
-                    <div style={S.lockBox}><Lock style={{width:24,height:24,color:"#C8A84B"}} /></div>
-                    <h2 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:22,color:"#1a1a2e",marginBottom:6}}>Acceso Parental</h2>
-                    <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#9a8f7e",marginBottom:24}}>Ingresa la clave de configuración</p>
-                    {err && <p style={S.errBanner}>{err}</p>}
-                    <input type="password" value={settingsPass} placeholder="Contraseña"
-                      onChange={e => { setSettingsPass(e.target.value); setErr(""); }}
-                      onKeyDown={e => e.key === "Enter" && (settingsPass === "camboropaes" ? setSettingsOpen(true) : setErr("Clave incorrecta"))}
-                      style={{...S.loginInput, marginBottom:12}}
-                    />
-                    <div style={{display:"flex",gap:10}}>
-                      <button onClick={goHome} style={{...S.btnGhost,flex:1}}>Volver</button>
-                      <button onClick={() => settingsPass === "camboropaes" ? setSettingsOpen(true) : setErr("Clave incorrecta")} style={{...S.btnPrimary,flex:2}}>
-                        Entrar <ChevronRight style={{width:15,height:15}} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-                      <h2 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:20,color:"#1a1a2e"}}>Configuración</h2>
-                      <button onClick={() => { setSettingsOpen(false); goHome(); }} style={S.closeBtn}>✕</button>
-                    </div>
-
-                    {/* IA */}
-                    <div style={{background:"#fff",border:"1px solid #E8E5DC",borderLeft:"4px solid #C8A84B",borderRadius:"0 12px 12px 0",padding:18,marginBottom:14,boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                        <Sparkles style={{width:15,height:15,color:"#C8A84B"}} />
-                        <p style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:15,color:"#1a1a2e"}}>Generar Preguntas PAES con IA</p>
-                      </div>
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:12,color:"#9a8f7e",marginBottom:14}}>Genera 3 preguntas nuevas con textos y criterios PAES reales.</p>
-                      {err && (
-                        <p style={{...S.errBanner,
-                          borderColor: errType==="success"?"#86efac":"#fca5a5",
-                          background:  errType==="success"?"#f0faf4":"#fff5f5",
-                          color:       errType==="success"?"#2d6a4f":"#991b1b",
-                        }}>{err}</p>
-                      )}
-                      <button onClick={generateWithAI} disabled={generating} style={generating ? S.btnDisabled : S.btnPrimary}>
-                        {generating ? <Loader2 style={{width:14,height:14,animation:"spin 1s linear infinite"}} /> : <Wand2 style={{width:14,height:14}} />}
-                        {generating ? "Generando preguntas..." : "Generar 3 Preguntas PAES"}
-                      </button>
-                      <p style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:"#bbb5a8",marginTop:10,textAlign:"center"}}>
-                        {extraQs.length} preguntas generadas · {allQs.length} total
-                      </p>
-                    </div>
-
-                    {/* Valores por dificultad */}
-                    <div style={{background:"#fff",border:"1px solid #E8E5DC",borderRadius:12,padding:16,marginBottom:14,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"#9a8f7e",textTransform:"uppercase",letterSpacing:"0.12em",fontWeight:600,marginBottom:14}}>Valor por dificultad (CLP)</p>
-                      {[
-                        { label:"Fácil",      key:"Fácil",      color:"#2d6a4f" },
-                        { label:"Intermedio", key:"Intermedio", color:"#92601a" },
-                        { label:"Difícil",    key:"Difícil",    color:"#991b1b" },
-                      ].map(item => (
-                        <div key={item.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                          <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:item.color,fontWeight:600,minWidth:90}}>{item.label}</span>
-                          <div style={{display:"flex",alignItems:"center",gap:8}}>
-                            <button
-                              onClick={() => { const u = {...rates,[item.key]:Math.max(0,(rates[item.key]||0)-50)}; setRates(u); persist({rates:u}); }}
-                              style={{width:30,height:30,borderRadius:7,background:"#f0ede4",border:"1px solid #E8E5DC",color:"#1a1a2e",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}
-                            >−</button>
-                            <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:14,color:"#1a1a2e",minWidth:60,textAlign:"center"}}>
-                              ${(rates[item.key]||0).toLocaleString("es-CL")}
-                            </span>
-                            <button
-                              onClick={() => { const u = {...rates,[item.key]:(rates[item.key]||0)+50}; setRates(u); persist({rates:u}); }}
-                              style={{width:30,height:30,borderRadius:7,background:"#1a1a2e",border:"none",color:"#C8A84B",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}
-                            >+</button>
-                          </div>
-                        </div>
-                      ))}
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:10,color:"#bbb5a8",marginTop:6}}>Al responder mal se descuenta el 50% del valor.</p>
-                    </div>
-
-                    {/* Multimedia */}
-                    <div style={{background:"#fff",border:"1px solid #E8E5DC",borderRadius:12,padding:16,marginBottom:14,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:9,color:"#9a8f7e",textTransform:"uppercase",letterSpacing:"0.12em",fontWeight:600,marginBottom:12}}>Multimedia</p>
-                      {[
-                        { label:"Imagen de acierto ✓", type:"success" },
-                        { label:"Imagen de error ✗",   type:"error" },
-                        { label:"Icono de la app",      type:"icon" },
-                      ].map(item => (
-                        <label key={item.type} style={{display:"flex",alignItems:"center",gap:12,background:"#FAFAF7",border:"1px solid #E8E5DC",borderRadius:9,padding:"10px 14px",marginBottom:8,cursor:"pointer"}}>
-                          <Upload style={{width:13,height:13,color:"#9a8f7e"}} />
-                          <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#3d3628"}}>{item.label}</span>
-                          <input type="file" style={{display:"none"}} accept="image/*" onChange={e => uploadImg(e, item.type)} />
-                        </label>
-                      ))}
-                    </div>
-
-                    <button onClick={resetAll} style={{width:"100%",background:"#fff5f5",border:"1px solid #fca5a5",color:"#991b1b",borderRadius:11,padding:"13px",fontSize:13,fontWeight:600,marginBottom:10,fontFamily:"'DM Sans',sans-serif"}}>
-                      Reiniciar Todo el Progreso
-                    </button>
-                    <button onClick={() => { setSettingsOpen(false); goHome(); }} style={{...S.btnGhost,width:"100%"}}>Cerrar</button>
-                  </div>
+                  <Home 
+                    attemptedIds={attemptedIds}
+                    allQs={allQs}
+                    completedIds={completedIds}
+                    accuracy={accuracy}
+                    available={available}
+                    setIsReview={setIsReview}
+                    setQIdx={setQIdx}
+                    setView={setView}
+                    S={S}
+                  />
                 )}
-              </div>
-            )}
 
-            {view === "results" && (
-              <div className="fade" style={{textAlign:"center",paddingTop:16}}>
-                <div style={{width:88,height:88,background:"#fffbf0",border:"2px solid #C8A84B",borderRadius:22,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px"}}>
-                  <Trophy style={{width:44,height:44,color:"#C8A84B"}} />
-                </div>
-                <h2 style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:28,color:"#1a1a2e",lineHeight:1.2,marginBottom:8}}>¡Entrenamiento<br/>Completo!</h2>
-                <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,color:"#9a8f7e",marginBottom:24}}>Has respondido todas las preguntas disponibles.</p>
-                <div style={{background:"#fff",border:"1px solid #E8E5DC",borderRadius:18,padding:"24px 20px",marginBottom:20,boxShadow:"0 2px 12px rgba(0,0,0,0.06)"}}>
-                  <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e",textTransform:"uppercase",letterSpacing:"0.15em",marginBottom:8}}>Dinero Acumulado</p>
-                  <p style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:40,color:"#C8A84B"}}>{fmt(balance)}</p>
-                  <div style={{display:"flex",justifyContent:"center",gap:28,marginTop:16}}>
-                    <div>
-                      <p style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:20,color:"#1a1a2e"}}>{completedIds.length}</p>
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e"}}>Correctas</p>
-                    </div>
-                    <div style={{width:1,background:"#E8E5DC"}} />
-                    <div>
-                      <p style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:600,fontSize:20,color:"#2d6a4f"}}>{accuracy}%</p>
-                      <p style={{fontFamily:"'DM Sans',sans-serif",fontSize:11,color:"#9a8f7e"}}>Precisión</p>
-                    </div>
-                  </div>
-                </div>
-                <button onClick={goHome} style={S.btnPrimary}>Volver al Inicio <ChevronRight style={{width:18,height:18}} /></button>
-              </div>
-            )}
+           {view === "test" && currentQ && (
+                  <QuestionView 
+                    currentQ={currentQ}
+                    goHome={goHome}
+                    confirmAnswer={confirmAnswer}
+                    selected={selected}
+                    setSelected={setSelected}
+                    showExp={showExp}
+                    confirmed={confirmed}
+                    correct={correct}
+                    nextQ={nextQ}
+                    successImage={successImage}
+                    errorImage={errorImage}
+                    DIFF_LIGHT={DIFF_LIGHT}
+                    S={S}
+                  />
+                )}
+
+           {view === "settings" && (
+                        <AdminPanel
+                          settingsOpen={settingsOpen}
+                          setSettingsOpen={setSettingsOpen}
+                          settingsPass={settingsPass}
+                          setSettingsPass={setSettingsPass}
+                          err={err}
+                          errType={errType}
+                          setErr={setErr}
+                          goHome={goHome}
+                          generateWithAI={generateWithAI}
+                          generating={generating}
+                          rates={rates}
+                          setRates={setRates}
+                          persist={persist}
+                          uploadImg={uploadImg}
+                          resetAll={resetAll}
+                          fmt={fmt}
+                          S={S}
+                        />
+)}
+
+           {view === "results" && (
+              <Results 
+                balance={balance}
+                completedIds={completedIds}
+                accuracy={accuracy}
+                fmt={fmt}
+                goHome={goHome}
+                S={S}
+              />
+          )}
 
           </div>
 
