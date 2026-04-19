@@ -74,7 +74,8 @@ export default function App() {
   const available = useMemo(() =>
     isReview ? allQs : allQs.filter(q => !attemptedIds.includes(q.id)),
     [allQs, attemptedIds, isReview]);
-  const currentQ = available[qIdx] || null;
+    
+  const currentQ = isReview ? allQs[qIdx] : available[qIdx];
 
   const goHome = () => {
     setView("home"); setSelected(null); setConfirmed(null);

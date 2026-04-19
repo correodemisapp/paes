@@ -8,19 +8,18 @@ export default function QuestionView({
   successImage, errorImage, DIFF_LIGHT, S 
 }) {
   
-  // --- GUARDIA CRÍTICA ---
-  // Si los datos de Firestore aún no llegan, mostramos un estado de carga amable
-  if (!currentQ || !currentQ.text || !currentQ.options) {
+  // VALIDACIÓN ULTRA-ESTRICTA: Si no hay pregunta o faltan datos clave, no renderizar el resto.
+  if (!currentQ || !currentQ.text || !currentQ.options || !DIFF_LIGHT) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
-        <p style={{ color: '#9a8f7e', fontSize: '14px', fontFamily: 'sans-serif' }}>
-          Preparando tu entrenamiento...
-        </p>
+      <div style={{ padding: "40px", textAlign: "center", color: "#9a8f7e" }}>
+        <p>Cargando contenido del entrenamiento...</p>
+        <button onClick={goHome} style={{ marginTop: "20px", textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}>
+          Volver al inicio
+        </button>
       </div>
     );
   }
 
-  // Ahora es seguro definir 'd' porque sabemos que currentQ existe
   const d = DIFF_LIGHT[currentQ.difficulty] || DIFF_LIGHT.Fácil;
 
   return (
