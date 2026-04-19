@@ -4,7 +4,7 @@ import { Sparkles, Loader2, Wand2, Lock, Upload, XCircle, ChevronLeft, Trash2, C
 export default function Settings({ 
   settingsOpen, setSettingsOpen, settingsPass, setSettingsPass,
   err, errType, setErr, goHome, generateWithAI, generating,
-  rates, setRates, persist, uploadImg, resetAll, fmt, S 
+  rates, setRates, persist, uploadImg, resetAll, fmt, S ={}
 }) {
   
   // Contenedor base para mantener la consecuencia visual
@@ -25,8 +25,8 @@ export default function Settings({
           <Lock size={30} color="#C8A84B" />
         </div>
         
-        <h2 style={{ ...S.bigTitle, fontSize: 24, marginBottom: 8 }}>Acceso Parental</h2>
-        <p style={{ ...S.subtitle, marginBottom: 32 }}>Ingresa la clave para configurar el sistema</p>
+        <h2 style={{ ...S?.bigTitle || {} , fontSize: 24, marginBottom: 8 }}>Acceso Parental</h2>
+        <p style={{ ...S?.subtitle || {}, marginBottom: 32 }}>Ingresa la clave para configurar el sistema</p>
         
         {err && (
           <div style={{ ...S.errBanner, width: "100%", marginBottom: 16, backgroundColor: "#ffebee", color: "#c62828" }}>

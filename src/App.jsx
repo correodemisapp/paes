@@ -61,11 +61,25 @@ export default function App() {
     })();
   }, []);
 
-  const persist = async (patch) => {
-    const state = { balance, completedIds, attemptedIds, extraQs, appIcon, successImage, errorImage, rates, ...patch };
-    try { await setDoc(DOC_REF, state); }
-    catch (e) { console.error("Error guardando datos:", e); }
-  };
+const persist = async (patch) => {
+  // Obtenemos el documento actual para no sobreescribir con datos viejos del estado
+  try {
+    await setDoc(DOC_REF, {
+      balance,
+      completedIds,
+      attemptedIds,
+      extraQs,
+      appIcon,
+      successImage,
+      errorImage,
+      rates,
+      ...patch // El parche SIEMPRE gana y sobreescribe lo anterior
+    }, { merge: true }); // Usamos merge: true para mayor seguridad
+    console.log("✓ Guardado en BD con éxito:", patch);
+  } catch (e) {
+    console.error("❌ Error crítico al guardar en Firebase:", e);
+  }
+};
 
   const allQs = useMemo(() => [
     ...(STATIC_QUESTIONS || []), 
@@ -165,7 +179,7 @@ export default function App() {
       const ts = Date.now();
       const newQs = rawQs.map((q, i) => {
         // Normalización de opciones
-        let fixedOptions = [];
+        const fixedOptions = Array.isArray(q.options) ? q.options : [];
         if (Array.isArray(q.options)) {
           fixedOptions = q.options;
         } else if (typeof q.options === 'object') {
@@ -174,7 +188,7 @@ export default function App() {
 
         return {
           ...q,
-          id: `gen_${ts}_${i}`,
+          id: `gen_${ts}_${i  }`,
           // --- CORRECCIÓN: Quitamos la concatenación para evitar repetición de textos ---
           question: q.question, 
           text: q.text || "", 
@@ -183,9 +197,11 @@ export default function App() {
           difficulty: q.difficulty || "Intermedio",
           explanation: q.explanation || "Analiza el texto para comprender la respuesta."
         };
+        
       });
 
       const updated = [...extraQs, ...newQs];
+      console.log("Total acumulado para guardar:", updated.length)
       setExtraQs(updated);
       await persist({ extraQs: updated });
       
@@ -216,7 +232,7 @@ export default function App() {
 
   const resetAll = async () => {
     if (!confirm("¿Reiniciar todo el progreso?")) return;
-    setBalance(0); setCompleted([]); setAttempted([]);
+    setBalance(0); setCompleted([]); setAttempted([]);setExtraQs([]);
     await persist({ balance: 0, completedIds: [], attemptedIds: [] });
     goHome();
   };
