@@ -68,14 +68,24 @@ export default function App() {
   };
 
   const allQs = useMemo(() => [
-  ...(STATIC_QUESTIONS || []), 
-  ...(extraQs || [])
-], [extraQs]);
+    ...(STATIC_QUESTIONS || []), 
+    ...(extraQs || [])
+  ], [extraQs]);
+  
   const available = useMemo(() =>
     isReview ? allQs : allQs.filter(q => !attemptedIds.includes(q.id)),
     [allQs, attemptedIds, isReview]);
-    
+
   const currentQ = isReview ? allQs[qIdx] : available[qIdx];
+
+  useEffect(() => {
+    console.log("--- CAMBIO DE ESTADO DETECTADO ---");
+    console.log("Vista actual:", view);
+    console.log("Preguntas disponibles (available):", available?.length);
+    console.log("Índice actual (qIdx):", qIdx);
+    console.log("Pregunta actual (currentQ):", currentQ);
+  }, [view, available, qIdx, isReview, currentQ]);
+  // ===============================================
 
   const goHome = () => {
     setView("home"); setSelected(null); setConfirmed(null);
@@ -96,8 +106,7 @@ export default function App() {
     await persist({ balance: newBalance, completedIds: newCompleted, attemptedIds: newAttempted });
   };
 
-const nextQ = () => {
-    // Esto asegura que la pantalla vuelva arriba al cambiar de pregunta
+  const nextQ = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (available.length === 0) { 
@@ -112,7 +121,7 @@ const nextQ = () => {
     setCorrect(null);
   };
 
-const generateWithAI = async () => {
+  const generateWithAI = async () => {
     if (generating) return;
     setGenerating(true); 
     setErr(""); 
@@ -131,67 +140,51 @@ const generateWithAI = async () => {
       if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
 
       const data = await res.json();
-      
-      // 1. ESPIAR LA RESPUESTA (Crucial para ver qué manda el servidor)
       console.log("RAW DATA DE IA:", data);
 
-      // Si el servidor manda success pero no manda el array de preguntas
       if (data.success && !data.questions && !data.preguntas && !Array.isArray(data)) {
-        throw new Error("El servidor confirmó éxito pero NO envió las preguntas. Revisa el Backend.");
+        throw new Error("El servidor confirmó éxito pero NO envió las preguntas.");
       }
 
-      // 2. EXTRAER EL TEXTO (Buscamos en todas las rutas posibles de la API)
       let rawText = "";
       if (data.questions || data.preguntas) {
         rawText = JSON.stringify(data);
       } else {
-        // Caso de APIs de streaming o raw de Gemini/Claude
         rawText = data.content?.map(b => b.text).join("") || data.text || JSON.stringify(data);
       }
 
-      // 3. LIMPIEZA DE MARKDOWN (Elimina ```json ... ```)
       const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-      
-      // 4. EXTRAER SOLO EL OBJETO JSON (Ignora texto extra de la IA)
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No se encontró un formato JSON válido en la respuesta.");
+      if (!jsonMatch) throw new Error("No se encontró un formato JSON válido.");
       
       const parsed = JSON.parse(jsonMatch[0]);
-
-      // 5. DETECTAR EL ARRAY DE PREGUNTAS
       const rawQs = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.preguntas || []);
 
-      if (rawQs.length === 0) {
-        throw new Error("La IA no incluyó ninguna pregunta en el listado.");
-      }
+      if (rawQs.length === 0) throw new Error("La IA no incluyó ninguna pregunta.");
 
-      // 6. NORMALIZACIÓN (Formatear para que React entienda todo)
       const ts = Date.now();
       const newQs = rawQs.map((q, i) => {
-        // Si las opciones vienen como [{id: 'A', text: '...'}], las pasamos a { A: '...' }
-        let fixedOptions = {};
+        // Normalización de opciones
+        let fixedOptions = [];
         if (Array.isArray(q.options)) {
-          q.options.forEach(opt => {
-            const key = opt.id || opt.key || "A";
-            fixedOptions[key] = opt.text || opt.value || "";
-          });
-        } else {
-          fixedOptions = q.options || {};
+          fixedOptions = q.options;
+        } else if (typeof q.options === 'object') {
+          fixedOptions = Object.entries(q.options).map(([id, text]) => ({ id, text }));
         }
 
         return {
           ...q,
           id: `gen_${ts}_${i}`,
-          // Unimos el texto de contexto con la pregunta para comprensión lectora
-          question: q.text ? `${q.text}\n\n${q.question}` : q.question,
+          // --- CORRECCIÓN: Quitamos la concatenación para evitar repetición de textos ---
+          question: q.question, 
+          text: q.text || "", 
           options: fixedOptions,
           correct: q.correct || q.respuesta || "A",
           difficulty: q.difficulty || "Intermedio",
-          explanation: q.explanation || "Explicación generada automáticamente."
+          explanation: q.explanation || "Analiza el texto para comprender la respuesta."
         };
       });
 
-      // 7. ACTUALIZAR Y PERSISTIR
       const updated = [...extraQs, ...newQs];
       setExtraQs(updated);
       await persist({ extraQs: updated });
@@ -239,7 +232,7 @@ const generateWithAI = async () => {
 
   return (
     <div style={S.root}>
-<style>{`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
         
         *{box-sizing:border-box;margin:0;padding:0}
@@ -257,7 +250,6 @@ const generateWithAI = async () => {
           transition: all 0.2s ease;
         }
 
-        /* --- NUEVAS REGLAS DE INTERACCIÓN --- */
         .home-card { 
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
           cursor: pointer; 
@@ -276,7 +268,6 @@ const generateWithAI = async () => {
           box-shadow: 0 6px 20px rgba(200, 168, 75, 0.2) !important;
           outline: none;
         }
-        /* ------------------------------------ */
 
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
@@ -333,22 +324,28 @@ const generateWithAI = async () => {
               />
             )}
 
-            {view === "test" && currentQ && (
-              <QuestionView
-                currentQ={currentQ}
-                goHome={goHome}
-                confirmAnswer={confirmAnswer}
-                selected={selected}
-                setSelected={setSelected}
-                showExp={showExp}
-                confirmed={confirmed}
-                correct={correct}
-                nextQ={nextQ}
-                successImage={successImage}
-                errorImage={errorImage}
-                DIFF_LIGHT={DIFF_LIGHT}
-                S={S}
-              />
+            {view === "test" && (
+              currentQ ? (
+                <QuestionView
+                  currentQ={currentQ}
+                  goHome={goHome}
+                  confirmAnswer={confirmAnswer}
+                  selected={selected}
+                  setSelected={setSelected}
+                  showExp={showExp}
+                  confirmed={confirmed}
+                  correct={correct}
+                  nextQ={nextQ}
+                  successImage={successImage}
+                  errorImage={errorImage}
+                  DIFF_LIGHT={DIFF_LIGHT}
+                  S={S}
+                />
+              ) : (
+                <div style={{ textAlign: "center", padding: 50 }}>
+                   <p style={{ color: "#9a8f7e" }}>Preparando preguntas...</p>
+                </div>
+              )
             )}
 
             {view === "settings" && (
@@ -387,11 +384,10 @@ const generateWithAI = async () => {
           </div>
 
           <div style={{ textAlign: "center", padding: "18px", fontSize: 10, color: "#ccc4b5", letterSpacing: "0.12em", textTransform: "uppercase", borderTop: "1px solid #E8E5DC", fontFamily: "'DM Sans',sans-serif" }}>
-            PAES Study · 2025
+            PAES Study · 2026
           </div>
         </>
       )}
     </div>
   );
-}
-
+} 

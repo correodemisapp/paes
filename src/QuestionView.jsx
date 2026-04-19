@@ -8,19 +8,21 @@ export default function QuestionView({
   successImage, errorImage, DIFF_LIGHT, S 
 }) {
   
-  // VALIDACIÓN ULTRA-ESTRICTA: Si no hay pregunta o faltan datos clave, no renderizar el resto.
-  if (!currentQ || !currentQ.text || !currentQ.options || !DIFF_LIGHT) {
+  // 1. Guardia de seguridad: Si no hay datos, mostramos carga en vez de romper la app
+  if (!currentQ || !currentQ.options) {
     return (
-      <div style={{ padding: "40px", textAlign: "center", color: "#9a8f7e" }}>
-        <p>Cargando contenido del entrenamiento...</p>
-        <button onClick={goHome} style={{ marginTop: "20px", textDecoration: "underline", background: "none", border: "none", cursor: "pointer" }}>
-          Volver al inicio
-        </button>
+      <div style={{ padding: 40, textAlign: 'center', color: '#9a8f7e' }}>
+        <p>Cargando pregunta...</p>
       </div>
     );
   }
 
   const d = DIFF_LIGHT[currentQ.difficulty] || DIFF_LIGHT.Fácil;
+
+  // 2. Normalización de opciones: Convierte objeto {A: "..."} a arreglo [{id:"A", text:"..."}]
+  const optionsArray = Array.isArray(currentQ.options) 
+    ? currentQ.options 
+    : Object.entries(currentQ.options).map(([id, text]) => ({ id, text }));
 
   return (
     <div className="fade">
@@ -39,7 +41,7 @@ export default function QuestionView({
 
       <div style={S.passage}>
         <div style={{maxHeight:220, overflowY:"auto"}}>
-          {currentQ.text.split("\n\n").map((p, i, arr) => (
+          {currentQ.text?.split("\n\n").map((p, i, arr) => (
             <p key={i} style={{fontSize:13, color:"#3d3628", lineHeight:1.85, marginBottom:i < arr.length-1 ? 12 : 0, fontStyle:"italic"}}>
               {p}
             </p>
@@ -52,7 +54,7 @@ export default function QuestionView({
       </h3>
 
       <div style={{display:"flex", flexDirection:"column", gap:9, marginBottom:18}}>
-        {currentQ.options.map(opt => {
+        {optionsArray.map(opt => {
           const isConf = confirmed === opt.id;
           const isRight = showExp && opt.id === currentQ.correct;
           let bg="#fff", border="1px solid #E8E5DC", lBg="#f0ede4", lCol="#9a8f7e";
