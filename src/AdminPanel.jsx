@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Loader2, Wand2, Lock, Upload, XCircle, ChevronLeft, Trash2, Coins, Image as ImageIcon } from "lucide-react";
+import { Sparkles, Loader2, Wand2, Lock, Upload, XCircle, ChevronLeft, Trash2, Coins, Settings as SettingsIcon, Image as ImageIcon } from "lucide-react";
 
 export default function Settings({ 
   settingsOpen, setSettingsOpen, settingsPass, setSettingsPass,
@@ -17,10 +17,11 @@ export default function Settings({
     textAlign: "center"
   };
 
+  // VISTA BLOQUEADA (Acceso Parental)
   if (!settingsOpen) {
     return (
       <div className="fade" style={containerStyle}>
-        <div style={{ ...S.lockBox, width: 70, height: 70, marginBottom: 20 }}>
+        <div style={{ ...(S?.lockBox || {}), width: 70, height: 70, marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Lock size={30} color="#C8A84B" />
         </div>
         
@@ -57,14 +58,74 @@ export default function Settings({
     );
   }
 
+  // VISTA DESBLOQUEADA (Panel administrativo)
   return (
     <div className="fade" style={{ ...containerStyle, textAlign: "left", alignItems: "stretch" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
-        <div>
-          <h2 style={{ ...S.bigTitle, fontSize: 22, marginBottom: 4 }}>Configuración</h2>
-          <p style={S.subtitle}>Panel de control administrativo</p>
+      
+      {/* CABECERA UNIFICADA: ICONO + TEXTO + BOTÓN CERRAR */}
+      <div style={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center", 
+        marginBottom: 32,
+        width: "100%" 
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          
+          {/* Cuadro del Icono (Engranaje) */}
+          <div style={{ 
+            ...(S?.lockBox || {}), 
+            width: 55, 
+            height: 55, 
+            flexShrink: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(200, 168, 75, 0.08)" // Color sutil distintivo
+          }}>
+            <SettingsIcon size={26} color="#C8A84B" />
+          </div>
+
+          {/* Bloque de Títulos alineado matemáticamente */}
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+            <h2 style={{ 
+              ...S.bigTitle, 
+              fontSize: 22, 
+              margin: 0, 
+              lineHeight: 1.1,
+              padding: 0
+            }}>
+              Configuración
+            </h2>
+            <p style={{ 
+              ...S.subtitle, 
+              margin: 0, 
+              padding: 0,
+              marginTop: 2 
+            }}>
+              Panel de control administrativo
+            </p>
+          </div>
         </div>
-        <button onClick={() => { setSettingsOpen(false); goHome(); }} style={{ ...S.btnGhost, width: 40, height: 40, padding: 0, borderRadius: "50%" }}>✕</button>
+
+        {/* Botón de Cierre (X) */}
+        <button 
+          onClick={() => { setSettingsOpen(false); goHome(); }} 
+          style={{ 
+            ...S.btnGhost, 
+            width: 40, 
+            height: 40, 
+            padding: 0, 
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "1px solid #E8E5DC",
+            color: "#9a8f7e"
+          }}
+        >
+          ✕
+        </button>
       </div>
 
       {/* IA de Generación - Tarjeta Destacada */}
