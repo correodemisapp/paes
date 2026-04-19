@@ -179,12 +179,12 @@ const persist = async (patch) => {
       const ts = Date.now();
       const newQs = rawQs.map((q, i) => {
         // Normalización de opciones
-        const fixedOptions = Array.isArray(q.options) ? q.options : [];
-        if (Array.isArray(q.options)) {
-          fixedOptions = q.options;
-        } else if (typeof q.options === 'object') {
-          fixedOptions = Object.entries(q.options).map(([id, text]) => ({ id, text }));
-        }
+
+      const fixedOptions = Array.isArray(q.options)
+  ? q.options // Si es array, lo usamos directamente
+  : (q.options && typeof q.options === 'object')
+    ? Object.entries(q.options).map(([id, text]) => ({ id, text })) // Si es objeto, lo mapeamos
+    : []; // Si no es nada de lo anterior, array vacío
 
         return {
           ...q,
