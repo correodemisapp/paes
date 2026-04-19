@@ -8,17 +8,19 @@ export default function QuestionView({
   successImage, errorImage, DIFF_LIGHT, S 
 }) {
   
-  // 1. GUARDIA: Si currentQ no existe (es null o undefined), mostramos un estado de carga.
-  // Esto evita que la aplicación intente leer propiedades de un objeto inexistente y se rompa.
-  if (!currentQ) {
+  // --- GUARDIA CRÍTICA ---
+  // Si los datos de Firestore aún no llegan, mostramos un estado de carga amable
+  if (!currentQ || !currentQ.text || !currentQ.options) {
     return (
-      <div className="fade" style={{ textAlign: "center", padding: "40px 20px" }}>
-        <p style={{ color: "#9a8f7e", fontSize: 14 }}>Cargando pregunta...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
+        <p style={{ color: '#9a8f7e', fontSize: '14px', fontFamily: 'sans-serif' }}>
+          Preparando tu entrenamiento...
+        </p>
       </div>
     );
   }
 
-  // 2. Una vez confirmado que currentQ existe, extraemos la configuración de dificultad
+  // Ahora es seguro definir 'd' porque sabemos que currentQ existe
   const d = DIFF_LIGHT[currentQ.difficulty] || DIFF_LIGHT.Fácil;
 
   return (
@@ -38,8 +40,7 @@ export default function QuestionView({
 
       <div style={S.passage}>
         <div style={{maxHeight:220, overflowY:"auto"}}>
-          {/* Usamos encadenamiento opcional (?.) por seguridad adicional */}
-          {currentQ.text?.split("\n\n").map((p, i, arr) => (
+          {currentQ.text.split("\n\n").map((p, i, arr) => (
             <p key={i} style={{fontSize:13, color:"#3d3628", lineHeight:1.85, marginBottom:i < arr.length-1 ? 12 : 0, fontStyle:"italic"}}>
               {p}
             </p>
@@ -52,7 +53,7 @@ export default function QuestionView({
       </h3>
 
       <div style={{display:"flex", flexDirection:"column", gap:9, marginBottom:18}}>
-        {currentQ.options?.map(opt => {
+        {currentQ.options.map(opt => {
           const isConf = confirmed === opt.id;
           const isRight = showExp && opt.id === currentQ.correct;
           let bg="#fff", border="1px solid #E8E5DC", lBg="#f0ede4", lCol="#9a8f7e";
