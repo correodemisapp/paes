@@ -86,11 +86,17 @@ const persist = async (patch) => {
     ...(extraQs || [])
   ], [extraQs]);
   
-  const available = useMemo(() =>
-    isReview ? allQs : allQs.filter(q => !attemptedIds.includes(q.id)),
-    [allQs, attemptedIds, isReview]);
+const available = useMemo(() => 
+  allQs.filter(q => !attemptedIds.includes(q.id)), 
+  [allQs, attemptedIds]
+);
 
-  const currentQ = isReview ? allQs[qIdx] : available[qIdx];
+const reviewQs = useMemo(() => 
+  allQs.filter(q => attemptedIds.includes(q.id)), 
+  [allQs, attemptedIds]
+);
+
+  const currentQ = isReview ? reviewQs[qIdx] : available[qIdx];
 
   useEffect(() => {
     console.log("--- CAMBIO DE ESTADO DETECTADO ---");
@@ -230,12 +236,47 @@ const persist = async (patch) => {
     reader.readAsDataURL(file);
   };
 
-  const resetAll = async () => {
-    if (!confirm("¿Reiniciar todo el progreso?")) return;
-    setBalance(0); setCompleted([]); setAttempted([]);setExtraQs([]);
-    await persist({ balance: 0, completedIds: [], attemptedIds: [] });
-    goHome();
-  };
+const resetAll = async () => {
+  if (window.confirm("¿Limpiar solo el progreso? Mantendrás las preguntas actuales.")) {
+    try {
+      // 1. Definimos los datos de limpieza (Mantenemos extraQs)
+      const resetData = {
+        balance: 0,
+        attemptedIds: [], // <--- Esto es lo que limpia el repaso de verdad
+        completedIds: [],
+        extraQs: extraQs,  // <--- IMPORTANTE: No lo dejamos vacío []
+        rates: rates,
+      };
+
+      // 2. Guardamos en Firebase (Sobreescribimos el documento)
+      await setDoc(DOC_REF, resetData);
+
+      // 3. Limpiamos el estado de React
+      setAttempted([]);
+      setCompleted([]);
+      setBalance(0);
+
+      alert("¡Progreso limpiado! Ahora tienes 0/13 respondidas.");
+      setView("home");
+    } catch (e) {
+      console.error("Error en reset:", e);
+    }
+  }
+};
+
+      // 2. Limpiamos el estado de React inmediatamente
+      setAttempted([]);
+      setCompleted([]);
+      setExtraQs([]);
+      setBalance(0);
+
+      alert("¡Repaso limpiado y total reseteado a 10!");
+      window.location.reload(); // Recarga física para limpiar caché
+    } catch (e) {
+      console.error("Error en reset:", e);
+    }
+  }
+};
 
   const accuracy = attemptedIds.length > 0 ? Math.round((completedIds.length / attemptedIds.length) * 100) : 0;
 
@@ -336,6 +377,7 @@ const persist = async (patch) => {
                 setIsReview={setIsReview}
                 setQIdx={setQIdx}
                 setView={setView}
+                appIcon={appIcon}
                 S={S}
               />
             )}
