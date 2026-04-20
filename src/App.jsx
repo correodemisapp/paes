@@ -1,5 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Trophy, Settings, ChevronRight, Brain, Lock, History, Send, Layers, Loader2, Sparkles, Upload, Wand2, ArrowLeft, Zap, XCircle, CheckCircle } from "lucide-react";
+import { 
+  Trophy, Settings, ChevronRight, Brain, Lock, History, Send, 
+  Layers, Loader2, Sparkles, Upload, Wand2, ArrowLeft, Zap, 
+  XCircle, CheckCircle, Trash2 
+} from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import Header from "./Header";
@@ -12,12 +16,19 @@ import QuestionView from "./QuestionView";
 import { S, DIFF_LIGHT } from "./styles";
 
 import { STATIC_QUESTIONS, DIFF, RATES, AI_SYSTEM, AI_USER } from "./questions";
-/* 17/04*/
-const DOC_REF = doc(db, "progreso", "usuario-principal");
-const fmt = (v) => new Intl.NumberFormat("es-CL", { style: "currency", currency: "CLP", maximumFractionDigits: 0 }).format(v);
 
+// Configuración de Referencia a la Base de Datos (Firebase)
+const DOC_REF = doc(db, "progreso", "usuario-principal");
+
+// Formateador de Moneda
+const fmt = (v) => new Intl.NumberFormat("es-CL", { 
+  style: "currency", 
+  currency: "CLP", 
+  maximumFractionDigits: 0 
+}).format(v);
 
 export default function App() {
+  // --- ESTADOS PRINCIPALES ---
   const [ready, setReady] = useState(false);
   const [view, setView] = useState("login");
   const [balance, setBalance] = useState(0);
@@ -27,12 +38,16 @@ export default function App() {
   const [appIcon, setAppIcon] = useState(null);
   const [successImage, setSuccessImage] = useState(null);
   const [errorImage, setErrorImage] = useState(null);
+  
+  // --- ESTADOS DE NAVEGACIÓN Y JUEGO ---
   const [isReview, setIsReview] = useState(false);
   const [qIdx, setQIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [confirmed, setConfirmed] = useState(null);
   const [showExp, setShowExp] = useState(false);
   const [correct, setCorrect] = useState(null);
+  
+  // --- ESTADOS DE SEGURIDAD Y ADMIN ---
   const [loginPass, setLoginPass] = useState("");
   const [settingsPass, setSettingsPass] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -41,6 +56,7 @@ export default function App() {
   const [generating, setGenerating] = useState(false);
   const [rates, setRates] = useState({ Fácil: 50, Intermedio: 150, Difícil: 250 });
 
+  // --- CARGA INICIAL (FIREBASE) ---
   useEffect(() => {
     (async () => {
       try {
@@ -56,91 +72,123 @@ export default function App() {
           if (d.errorImage) setErrorImage(d.errorImage);
           if (d.rates) setRates(d.rates);
         }
-      } catch (e) { console.error("Error cargando datos:", e); }
+      } catch (e) { 
+        console.error("Error cargando datos de Firebase:", e); 
+      }
       setReady(true);
     })();
   }, []);
 
-const persist = async (patch) => {
-  // Obtenemos el documento actual para no sobreescribir con datos viejos del estado
-  try {
-    await setDoc(DOC_REF, {
-      balance,
-      completedIds,
-      attemptedIds,
-      extraQs,
-      appIcon,
-      successImage,
-      errorImage,
-      rates,
-      ...patch // El parche SIEMPRE gana y sobreescribe lo anterior
-    }, { merge: true }); // Usamos merge: true para mayor seguridad
-    console.log("✓ Guardado en BD con éxito:", patch);
-  } catch (e) {
-    console.error("❌ Error crítico al guardar en Firebase:", e);
-  }
-};
+  // --- PERSISTENCIA (PROTECCIÓN DE DATOS) ---
+  const persist = async (patch) => {
+    try {
+      // Usamos merge: true para no borrar campos como el icono si no vienen en el parche
+      await setDoc(DOC_REF, {
+        balance,
+        completedIds,
+        attemptedIds,
+        extraQs,
+        appIcon,
+        successImage,
+        errorImage,
+        rates,
+        ...patch 
+      }, { merge: true });
+    } catch (e) {
+      console.error("❌ Error crítico en Firebase:", e);
+    }
+  };
 
+  // --- LÓGICA DE PREGUNTAS (USEMEMO) ---
   const allQs = useMemo(() => [
     ...(STATIC_QUESTIONS || []), 
     ...(extraQs || [])
   ], [extraQs]);
   
-const available = useMemo(() => 
-  allQs.filter(q => !attemptedIds.includes(q.id)), 
-  [allQs, attemptedIds]
-);
+  // Preguntas no intentadas
+  const available = useMemo(() => 
+    allQs.filter(q => !attemptedIds.includes(q.id)), 
+    [allQs, attemptedIds]
+  );
 
-const reviewQs = useMemo(() => 
-  allQs.filter(q => attemptedIds.includes(q.id)), 
-  [allQs, attemptedIds]
-);
+  // Preguntas para el Modo Repaso (Intentadas)
+  const reviewQs = useMemo(() => 
+    allQs.filter(q => attemptedIds.includes(q.id)), 
+    [allQs, attemptedIds]
+  );
 
+  // Selección de la pregunta actual según el modo
   const currentQ = isReview ? reviewQs[qIdx] : available[qIdx];
 
-  useEffect(() => {
-    console.log("--- CAMBIO DE ESTADO DETECTADO ---");
-    console.log("Vista actual:", view);
-    console.log("Preguntas disponibles (available):", available?.length);
-    console.log("Índice actual (qIdx):", qIdx);
-    console.log("Pregunta actual (currentQ):", currentQ);
-  }, [view, available, qIdx, isReview, currentQ]);
-  // ===============================================
-
+  // --- FUNCIONES DE NAVEGACIÓN ---
   const goHome = () => {
-    setView("home"); setSelected(null); setConfirmed(null);
-    setShowExp(false); setCorrect(null); setErr("");
+    setView("home"); 
+    setSelected(null); 
+    setConfirmed(null);
+    setShowExp(false); 
+    setCorrect(null); 
+    setErr("");
   };
 
   const confirmAnswer = async () => {
     if (!selected || showExp || !currentQ) return;
+
     const isC = selected === currentQ.correct;
     const rate = rates[currentQ.difficulty] || 100;
-    setCorrect(isC); setConfirmed(selected); setShowExp(true);
-    const newAttempted = attemptedIds.includes(currentQ.id) ? attemptedIds : [...attemptedIds, currentQ.id];
-    const newCompleted = (isC && !completedIds.includes(currentQ.id)) ? [...completedIds, currentQ.id] : completedIds;
-    const newBalance = isC && !completedIds.includes(currentQ.id) ? balance + rate
-      : !isC && !completedIds.includes(currentQ.id) ? Math.max(0, balance - rate * 0.5)
+    
+    setCorrect(isC); 
+    setConfirmed(selected); 
+    setShowExp(true);
+
+    const newAttempted = attemptedIds.includes(currentQ.id) 
+      ? attemptedIds 
+      : [...attemptedIds, currentQ.id];
+      
+    const newCompleted = (isC && !completedIds.includes(currentQ.id)) 
+      ? [...completedIds, currentQ.id] 
+      : completedIds;
+
+    const newBalance = (isC && !completedIds.includes(currentQ.id)) 
+      ? balance + rate
+      : (!isC && !completedIds.includes(currentQ.id)) 
+        ? Math.max(0, balance - (rate * 0.5))
         : balance;
-    setAttempted(newAttempted); setCompleted(newCompleted); setBalance(newBalance);
-    await persist({ balance: newBalance, completedIds: newCompleted, attemptedIds: newAttempted });
+
+    setAttempted(newAttempted); 
+    setCompleted(newCompleted); 
+    setBalance(newBalance);
+
+    // Guardar progreso en la nube
+    await persist({ 
+      balance: newBalance, 
+      completedIds: newCompleted, 
+      attemptedIds: newAttempted 
+    });
   };
 
   const nextQ = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    if (available.length === 0) { 
+    // Si estamos en modo normal y no quedan más, ir a resultados
+    if (!isReview && available.length <= 1) { 
       setView("results"); 
       return; 
     }
     
-    setQIdx(isReview ? (p => (p + 1) % available.length) : 0);
+    // En repaso, ciclar las preguntas
+    if (isReview) {
+      setQIdx((prev) => (prev + 1) % reviewQs.length);
+    } else {
+      setQIdx(0); // Siempre la primera de las disponibles
+    }
+
     setSelected(null); 
     setConfirmed(null); 
     setShowExp(false); 
     setCorrect(null);
   };
 
+  // --- GENERACIÓN CON IA (UNIFICADO) ---
   const generateWithAI = async () => {
     if (generating) return;
     setGenerating(true); 
@@ -160,54 +208,32 @@ const reviewQs = useMemo(() =>
       if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
 
       const data = await res.json();
-      console.log("RAW DATA DE IA:", data);
-
-      if (data.success && !data.questions && !data.preguntas && !Array.isArray(data)) {
-        throw new Error("El servidor confirmó éxito pero NO envió las preguntas.");
-      }
-
-      let rawText = "";
-      if (data.questions || data.preguntas) {
-        rawText = JSON.stringify(data);
-      } else {
-        rawText = data.content?.map(b => b.text).join("") || data.text || JSON.stringify(data);
-      }
-
+      
+      // Limpieza de formato JSON de la IA
+      const rawText = JSON.stringify(data);
       const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No se encontró un formato JSON válido.");
+      
+      if (!jsonMatch) throw new Error("Formato de IA inválido.");
       
       const parsed = JSON.parse(jsonMatch[0]);
       const rawQs = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.preguntas || []);
 
-      if (rawQs.length === 0) throw new Error("La IA no incluyó ninguna pregunta.");
-
       const ts = Date.now();
-      const newQs = rawQs.map((q, i) => {
-        // Normalización de opciones
-
-      const fixedOptions = Array.isArray(q.options)
-  ? q.options // Si es array, lo usamos directamente
-  : (q.options && typeof q.options === 'object')
-    ? Object.entries(q.options).map(([id, text]) => ({ id, text })) // Si es objeto, lo mapeamos
-    : []; // Si no es nada de lo anterior, array vacío
-
-        return {
-          ...q,
-          id: `gen_${ts}_${i  }`,
-          // --- CORRECCIÓN: Quitamos la concatenación para evitar repetición de textos ---
-          question: q.question, 
-          text: q.text || "", 
-          options: fixedOptions,
-          correct: q.correct || q.respuesta || "A",
-          difficulty: q.difficulty || "Intermedio",
-          explanation: q.explanation || "Analiza el texto para comprender la respuesta."
-        };
-        
-      });
+      const newQs = rawQs.map((q, i) => ({
+        ...q,
+        id: `gen_${ts}_${i}`,
+        question: q.question, 
+        text: q.text || "", 
+        options: Array.isArray(q.options) 
+          ? q.options 
+          : Object.entries(q.options).map(([id, text]) => ({ id, text })),
+        correct: q.correct || q.respuesta || "A",
+        difficulty: q.difficulty || "Intermedio",
+        explanation: q.explanation || "Analiza el texto para comprender la respuesta."
+      }));
 
       const updated = [...extraQs, ...newQs];
-      console.log("Total acumulado para guardar:", updated.length)
       setExtraQs(updated);
       await persist({ extraQs: updated });
       
@@ -215,17 +241,17 @@ const reviewQs = useMemo(() =>
       setErr(`✓ ${newQs.length} preguntas añadidas correctamente`);
 
     } catch (e) {
-      console.error("DETALLE ERROR IA:", e);
-      setErrType("error");
+      console.error("Error IA:", e);
       setErr(`Error: ${e.message}`);
     } finally {
       setGenerating(false);
     }
   };
 
-
+  // --- GESTIÓN DE IMÁGENES ---
   const uploadImg = (e, type) => {
-    const file = e.target.files[0]; if (!file) return;
+    const file = e.target.files[0]; 
+    if (!file) return;
     const reader = new FileReader();
     reader.onloadend = async () => {
       const b64 = reader.result;
@@ -236,50 +262,40 @@ const reviewQs = useMemo(() =>
     reader.readAsDataURL(file);
   };
 
-const resetAll = async () => {
-  if (window.confirm("¿Limpiar solo el progreso? Mantendrás las preguntas actuales.")) {
-    try {
-      // 1. Definimos los datos de limpieza (Mantenemos extraQs)
-      const resetData = {
-        balance: 0,
-        attemptedIds: [], // <--- Esto es lo que limpia el repaso de verdad
-        completedIds: [],
-        extraQs: extraQs,  // <--- IMPORTANTE: No lo dejamos vacío []
-        rates: rates,
-      };
+  // --- RESET TOTAL (PROTEGIENDO ICONOS Y PREGUNTAS) ---
+  const resetAll = async () => {
+    if (window.confirm("¿Limpiar historial de repaso y aciertos? (Mantendrás tus 13 preguntas e iconos)")) {
+      try {
+        const resetData = {
+          balance: 0,
+          attemptedIds: [], 
+          completedIds: [],
+          extraQs: extraQs,  // Mantenemos las preguntas generadas
+          appIcon: appIcon || "", // Mantenemos el icono
+          successImage: successImage || "",
+          errorImage: errorImage || "",
+          rates: rates
+        };
 
-      // 2. Guardamos en Firebase (Sobreescribimos el documento)
-      await setDoc(DOC_REF, resetData);
+        await setDoc(DOC_REF, resetData);
+        
+        setAttempted([]);
+        setCompleted([]);
+        setBalance(0);
 
-      // 3. Limpiamos el estado de React
-      setAttempted([]);
-      setCompleted([]);
-      setBalance(0);
-
-      alert("¡Progreso limpiado! Ahora tienes 0/13 respondidas.");
-      setView("home");
-    } catch (e) {
-      console.error("Error en reset:", e);
+        alert("¡Progreso de repaso eliminado!");
+        setView("home");
+      } catch (e) {
+        console.error("Error en reset:", e);
+      }
     }
-  }
-};
+  };
 
-      // 2. Limpiamos el estado de React inmediatamente
-      setAttempted([]);
-      setCompleted([]);
-      setExtraQs([]);
-      setBalance(0);
+  const accuracy = attemptedIds.length > 0 
+    ? Math.round((completedIds.length / attemptedIds.length) * 100) 
+    : 0;
 
-      alert("¡Repaso limpiado y total reseteado a 10!");
-      window.location.reload(); // Recarga física para limpiar caché
-    } catch (e) {
-      console.error("Error en reset:", e);
-    }
-  }
-};
-
-  const accuracy = attemptedIds.length > 0 ? Math.round((completedIds.length / attemptedIds.length) * 100) : 0;
-
+  // --- PANTALLA DE CARGA ---
   if (!ready) return (
     <div style={S.center}>
       <Loader2 style={{ width: 32, height: 32, color: "#C8A84B", animation: "spin 1s linear infinite" }} />
@@ -287,8 +303,10 @@ const resetAll = async () => {
     </div>
   );
 
+  // --- RENDERIZADO PRINCIPAL ---
   return (
     <div style={S.root}>
+      {/* Estilos Globales e Inyectados */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
         
@@ -301,12 +319,6 @@ const resetAll = async () => {
           transition: all 0.2s ease;
         }
         
-        input{
-          font-family:'DM Sans',sans-serif;
-          color:#1a1a2e;
-          transition: all 0.2s ease;
-        }
-
         .home-card { 
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
           cursor: pointer; 
@@ -318,30 +330,15 @@ const resetAll = async () => {
           border-color: #C8A84B !important;
         }
 
-        input:focus {
-          border-color: #1a1a2e !important;
-          background-color: #fffbf0 !important;
-          transform: scale(1.02);
-          box-shadow: 0 6px 20px rgba(200, 168, 75, 0.2) !important;
-          outline: none;
-        }
-
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes modalIn{from{opacity:0;transform:translate(-50%,-48%) scale(0.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-        
         .fade{animation:fadeUp 0.3s ease}
-        
-        button:disabled{cursor:not-allowed}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes spin{to{transform:rotate(360deg)}}
         
         ::-webkit-scrollbar{width:4px}
-        ::-webkit-scrollbar-track{background:#f0ede4}
         ::-webkit-scrollbar-thumb{background:#C8A84B55;border-radius:4px}
-        
-        input::placeholder{color:#bbb5a8}
       `}</style>
 
-
+      {/* VISTA: LOGIN */}
       {view === "login" && (
         <Login
           loginPass={loginPass}
@@ -354,6 +351,7 @@ const resetAll = async () => {
         />
       )}
 
+      {/* VISTAS: APP (HEADER + BODY) */}
       {view !== "login" && (
         <>
           <Header
@@ -366,7 +364,7 @@ const resetAll = async () => {
           />
 
           <div style={S.body}>
-
+            {/* VISTA: HOME */}
             {view === "home" && (
               <Home
                 attemptedIds={attemptedIds}
@@ -377,11 +375,12 @@ const resetAll = async () => {
                 setIsReview={setIsReview}
                 setQIdx={setQIdx}
                 setView={setView}
-                appIcon={appIcon}
+                appIcon={appIcon} // Ahora el Home puede mostrar el logo
                 S={S}
               />
             )}
 
+            {/* VISTA: TEST / PREGUNTAS */}
             {view === "test" && (
               currentQ ? (
                 <QuestionView
@@ -401,11 +400,13 @@ const resetAll = async () => {
                 />
               ) : (
                 <div style={{ textAlign: "center", padding: 50 }}>
-                   <p style={{ color: "#9a8f7e" }}>Preparando preguntas...</p>
+                   <p style={{ color: "#9a8f7e" }}>No hay preguntas en esta sección.</p>
+                   <button onClick={goHome} style={{marginTop: 20, color: "#C8A84B"}}>Volver al inicio</button>
                 </div>
               )
             )}
 
+            {/* VISTA: ADMIN / SETTINGS */}
             {view === "settings" && (
               <AdminPanel
                 settingsOpen={settingsOpen}
@@ -428,6 +429,7 @@ const resetAll = async () => {
               />
             )}
 
+            {/* VISTA: RESULTADOS FINALES */}
             {view === "results" && (
               <Results
                 balance={balance}
@@ -438,14 +440,23 @@ const resetAll = async () => {
                 S={S}
               />
             )}
-
           </div>
 
-          <div style={{ textAlign: "center", padding: "18px", fontSize: 10, color: "#ccc4b5", letterSpacing: "0.12em", textTransform: "uppercase", borderTop: "1px solid #E8E5DC", fontFamily: "'DM Sans',sans-serif" }}>
+          {/* FOOTER */}
+          <div style={{ 
+            textAlign: "center", 
+            padding: "18px", 
+            fontSize: 10, 
+            color: "#ccc4b5", 
+            letterSpacing: "0.12em", 
+            textTransform: "uppercase", 
+            borderTop: "1px solid #E8E5DC", 
+            fontFamily: "'DM Sans',sans-serif" 
+          }}>
             PAES Study · 2026
           </div>
         </>
       )}
     </div>
   );
-} 
+}
