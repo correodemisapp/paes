@@ -151,6 +151,14 @@ export default function App() {
     setConfirmed(selected);
     setShowExp(true);
 
+    // --- ESCUDO DE REPASO ---
+    // Si estamos repasando, mostramos si es correcta o no, pero NO guardamos nada.
+    if (isReview) {
+      console.log("Modo Repaso: Visualización sin cambios en estadísticas.");
+      return; 
+    }
+    // ------------------------
+
     // Cálculos de nuevo estado
     const newAttempted = attemptedIds.includes(currentQ.id) 
       ? attemptedIds 
