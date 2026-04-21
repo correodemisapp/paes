@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { 
   Trophy, Settings, ChevronRight, Brain, Lock, History, Send, 
   Layers, Loader2, Sparkles, Upload, Wand2, ArrowLeft, Zap, 
-  XCircle, CheckCircle, Trash2 
+  XCircle, CheckCircle, Trash2, PlusCircle, Database
 } from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
+
+// Importación de Componentes Locales
 import Header from "./Header";
 import Results from "./Results";
 import FeedbackModal from "./FeedbackModal";
@@ -13,14 +15,18 @@ import AdminPanel from "./AdminPanel";
 import Login from "./Login";
 import Home from "./Home";
 import QuestionView from "./QuestionView";
-import { S, DIFF_LIGHT } from "./styles";
 
+// Estilos y Constantes
+import { S, DIFF_LIGHT } from "./styles";
 import { STATIC_QUESTIONS, DIFF, RATES, AI_SYSTEM, AI_USER } from "./questions";
 
-// Configuración de Referencia a la Base de Datos (Firebase)
+/**
+ * CONFIGURACIÓN DE REFERENCIA (FIREBASE)
+ * Este documento centraliza el estado global de la aplicación.
+ */
 const DOC_REF = doc(db, "progreso", "usuario-principal");
 
-// Formateador de Moneda
+// Formateador de moneda para la economía del juego
 const fmt = (v) => new Intl.NumberFormat("es-CL", { 
   style: "currency", 
   currency: "CLP", 
@@ -28,18 +34,22 @@ const fmt = (v) => new Intl.NumberFormat("es-CL", {
 }).format(v);
 
 export default function App() {
-  // --- ESTADOS PRINCIPALES ---
+  // --- 1. ESTADOS DE INFRAESTRUCTURA Y CARGA ---
   const [ready, setReady] = useState(false);
   const [view, setView] = useState("login");
   const [balance, setBalance] = useState(0);
+  
+  // --- 2. ESTADOS DE DATOS (PREGUNTAS Y PROGRESO) ---
   const [completedIds, setCompleted] = useState([]);
   const [attemptedIds, setAttempted] = useState([]);
   const [extraQs, setExtraQs] = useState([]);
+  
+  // --- 3. ESTADOS DE PERSONALIZACIÓN (IMÁGENES BASE64) ---
   const [appIcon, setAppIcon] = useState(null);
   const [successImage, setSuccessImage] = useState(null);
   const [errorImage, setErrorImage] = useState(null);
   
-  // --- ESTADOS DE NAVEGACIÓN Y JUEGO ---
+  // --- 4. ESTADOS DE NAVEGACIÓN DEL QUIZ ---
   const [isReview, setIsReview] = useState(false);
   const [qIdx, setQIdx] = useState(0);
   const [selected, setSelected] = useState(null);
@@ -47,7 +57,7 @@ export default function App() {
   const [showExp, setShowExp] = useState(false);
   const [correct, setCorrect] = useState(null);
   
-  // --- ESTADOS DE SEGURIDAD Y ADMIN ---
+  // --- 5. ESTADOS DE ADMINISTRACIÓN Y SEGURIDAD ---
   const [loginPass, setLoginPass] = useState("");
   const [settingsPass, setSettingsPass] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -56,13 +66,14 @@ export default function App() {
   const [generating, setGenerating] = useState(false);
   const [rates, setRates] = useState({ Fácil: 50, Intermedio: 150, Difícil: 250 });
 
-  // --- CARGA INICIAL (FIREBASE) ---
+  // --- 6. EFECTO DE CARGA INICIAL (FIREBASE) ---
   useEffect(() => {
-    (async () => {
+    const fetchData = async () => {
       try {
         const snap = await getDoc(DOC_REF);
         if (snap.exists()) {
           const d = snap.data();
+          // Carga segura de cada campo
           if (d.balance !== undefined) setBalance(d.balance);
           if (d.completedIds) setCompleted(d.completedIds);
           if (d.attemptedIds) setAttempted(d.attemptedIds);
@@ -71,75 +82,76 @@ export default function App() {
           if (d.successImage) setSuccessImage(d.successImage);
           if (d.errorImage) setErrorImage(d.errorImage);
           if (d.rates) setRates(d.rates);
+        } else {
+          console.log("Creando nuevo perfil de usuario en Firebase...");
         }
-      } catch (e) { 
-        console.error("Error cargando datos de Firebase:", e); 
+      } catch (e) {
+        console.error("Error al cargar datos de Firebase:", e);
+      } finally {
+        setReady(true);
       }
-      setReady(true);
-    })();
+    };
+    fetchData();
   }, []);
 
-  // --- PERSISTENCIA (PROTECCIÓN DE DATOS) ---
+  // --- 7. PERSISTENCIA ATÓMICA (FIX: MERGE TRUE) ---
   const persist = async (patch) => {
     try {
-      // Usamos merge: true para no borrar campos como el icono si no vienen en el parche
-      await setDoc(DOC_REF, {
-        balance,
-        completedIds,
-        attemptedIds,
-        extraQs,
-        appIcon,
-        successImage,
-        errorImage,
-        rates,
-        ...patch 
-      }, { merge: true });
+      // Usamos merge: true para no borrar campos existentes (como el icono)
+      await setDoc(DOC_REF, patch, { merge: true });
+      console.log("✓ Sincronización exitosa:", patch);
     } catch (e) {
-      console.error("❌ Error crítico en Firebase:", e);
+      console.error("❌ Error de persistencia en Firebase:", e);
+      if (e.message.includes("large")) {
+        alert("El archivo es muy pesado para la base de datos.");
+      }
     }
   };
 
-  // --- LÓGICA DE PREGUNTAS (USEMEMO) ---
-  const allQs = useMemo(() => [
-    ...(STATIC_QUESTIONS || []), 
-    ...(extraQs || [])
-  ], [extraQs]);
+  // --- 8. LÓGICA DE FILTRADO DE PREGUNTAS (USEMEMO) ---
+  const allQs = useMemo(() => {
+    return [
+      ...(STATIC_QUESTIONS || []), 
+      ...(extraQs || [])
+    ];
+  }, [extraQs]);
   
-  // Preguntas no intentadas
-  const available = useMemo(() => 
-    allQs.filter(q => !attemptedIds.includes(q.id)), 
-    [allQs, attemptedIds]
-  );
+  // Preguntas que el usuario AÚN NO ha intentado
+  const available = useMemo(() => {
+    return allQs.filter(q => !attemptedIds.includes(q.id));
+  }, [allQs, attemptedIds]);
 
-  // Preguntas para el Modo Repaso (Intentadas)
-  const reviewQs = useMemo(() => 
-    allQs.filter(q => attemptedIds.includes(q.id)), 
-    [allQs, attemptedIds]
-  );
+  // Preguntas que el usuario YA intentó (Historial/Repaso)
+  const reviewQs = useMemo(() => {
+    return allQs.filter(q => attemptedIds.includes(q.id));
+  }, [allQs, attemptedIds]);
 
-  // Selección de la pregunta actual según el modo
-  const currentQ = isReview ? reviewQs[qIdx] : available[qIdx];
+  // Selección dinámica de la pregunta actual según el modo
+  const currentQ = useMemo(() => {
+    return isReview ? reviewQs[qIdx] : available[qIdx];
+  }, [isReview, reviewQs, available, qIdx]);
 
-  // --- FUNCIONES DE NAVEGACIÓN ---
+  // --- 9. HANDLERS DE INTERFAZ ---
   const goHome = () => {
-    setView("home"); 
-    setSelected(null); 
+    setView("home");
+    setSelected(null);
     setConfirmed(null);
-    setShowExp(false); 
-    setCorrect(null); 
+    setShowExp(false);
+    setCorrect(null);
     setErr("");
   };
 
   const confirmAnswer = async () => {
     if (!selected || showExp || !currentQ) return;
-
+    
     const isC = selected === currentQ.correct;
     const rate = rates[currentQ.difficulty] || 100;
     
-    setCorrect(isC); 
-    setConfirmed(selected); 
+    setCorrect(isC);
+    setConfirmed(selected);
     setShowExp(true);
 
+    // Cálculos de nuevo estado
     const newAttempted = attemptedIds.includes(currentQ.id) 
       ? attemptedIds 
       : [...attemptedIds, currentQ.id];
@@ -154,11 +166,12 @@ export default function App() {
         ? Math.max(0, balance - (rate * 0.5))
         : balance;
 
-    setAttempted(newAttempted); 
-    setCompleted(newCompleted); 
+    // Actualización de estado local
+    setAttempted(newAttempted);
+    setCompleted(newCompleted);
     setBalance(newBalance);
 
-    // Guardar progreso en la nube
+    // Persistencia parcial (más eficiente)
     await persist({ 
       balance: newBalance, 
       completedIds: newCompleted, 
@@ -169,30 +182,30 @@ export default function App() {
   const nextQ = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Si estamos en modo normal y no quedan más, ir a resultados
+    // En modo normal, si se acaban las preguntas, mostrar resultados
     if (!isReview && available.length <= 1) { 
       setView("results"); 
       return; 
     }
     
-    // En repaso, ciclar las preguntas
+    // Navegación interna
     if (isReview) {
       setQIdx((prev) => (prev + 1) % reviewQs.length);
     } else {
-      setQIdx(0); // Siempre la primera de las disponibles
+      setQIdx(0); 
     }
-
-    setSelected(null); 
-    setConfirmed(null); 
-    setShowExp(false); 
+    
+    setSelected(null);
+    setConfirmed(null);
+    setShowExp(false);
     setCorrect(null);
   };
 
-  // --- GENERACIÓN CON IA (UNIFICADO) ---
+  // --- 10. LÓGICA DE INTELIGENCIA ARTIFICIAL ---
   const generateWithAI = async () => {
     if (generating) return;
-    setGenerating(true); 
-    setErr(""); 
+    setGenerating(true);
+    setErr("");
     setErrType("error");
 
     try {
@@ -205,16 +218,13 @@ export default function App() {
         })
       });
 
-      if (!res.ok) throw new Error(`Error servidor: ${res.status}`);
-
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
       const data = await res.json();
       
-      // Limpieza de formato JSON de la IA
-      const rawText = JSON.stringify(data);
-      const cleanText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      // Limpieza de JSON (Remover Markdown)
+      const cleanText = JSON.stringify(data).replace(/```json/g, "").replace(/```/g, "").trim();
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) throw new Error("Formato de IA inválido.");
+      if (!jsonMatch) throw new Error("IA devolvió un formato no válido.");
       
       const parsed = JSON.parse(jsonMatch[0]);
       const rawQs = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.preguntas || []);
@@ -223,14 +233,12 @@ export default function App() {
       const newQs = rawQs.map((q, i) => ({
         ...q,
         id: `gen_${ts}_${i}`,
-        question: q.question, 
-        text: q.text || "", 
         options: Array.isArray(q.options) 
           ? q.options 
           : Object.entries(q.options).map(([id, text]) => ({ id, text })),
         correct: q.correct || q.respuesta || "A",
         difficulty: q.difficulty || "Intermedio",
-        explanation: q.explanation || "Analiza el texto para comprender la respuesta."
+        explanation: q.explanation || "Revisa el texto para fundamentar la respuesta."
       }));
 
       const updated = [...extraQs, ...newQs];
@@ -238,55 +246,59 @@ export default function App() {
       await persist({ extraQs: updated });
       
       setErrType("success");
-      setErr(`✓ ${newQs.length} preguntas añadidas correctamente`);
-
+      setErr(`✓ ${newQs.length} nuevas preguntas preparadas.`);
     } catch (e) {
-      console.error("Error IA:", e);
       setErr(`Error: ${e.message}`);
     } finally {
       setGenerating(false);
     }
   };
 
-  // --- GESTIÓN DE IMÁGENES ---
+  // --- 11. GESTIÓN DE CARGA DE IMÁGENES ---
   const uploadImg = (e, type) => {
-    const file = e.target.files[0]; 
+    const file = e.target.files[0];
     if (!file) return;
+    
     const reader = new FileReader();
     reader.onloadend = async () => {
       const b64 = reader.result;
-      if (type === "icon") { setAppIcon(b64); await persist({ appIcon: b64 }); }
-      if (type === "success") { setSuccessImage(b64); await persist({ successImage: b64 }); }
-      if (type === "error") { setErrorImage(b64); await persist({ errorImage: b64 }); }
+      if (type === "icon") { 
+        setAppIcon(b64); 
+        await persist({ appIcon: b64 }); 
+      }
+      if (type === "success") { 
+        setSuccessImage(b64); 
+        await persist({ successImage: b64 }); 
+      }
+      if (type === "error") { 
+        setErrorImage(b64); 
+        await persist({ errorImage: b64 }); 
+      }
     };
     reader.readAsDataURL(file);
   };
 
-  // --- RESET TOTAL (PROTEGIENDO ICONOS Y PREGUNTAS) ---
+  // --- 12. REINICIO TOTAL (PROTECTOR) ---
   const resetAll = async () => {
-    if (window.confirm("¿Limpiar historial de repaso y aciertos? (Mantendrás tus 13 preguntas e iconos)")) {
+    if (window.confirm("¿Seguro que quieres limpiar el progreso? Se mantendrán tus 13 preguntas y el icono.")) {
       try {
         const resetData = {
           balance: 0,
           attemptedIds: [], 
           completedIds: [],
-          extraQs: extraQs,  // Mantenemos las preguntas generadas
-          appIcon: appIcon || "", // Mantenemos el icono
-          successImage: successImage || "",
-          errorImage: errorImage || "",
-          rates: rates
+          // extraQs y appIcon no se incluyen para que el merge:true los deje intactos
         };
-
-        await setDoc(DOC_REF, resetData);
+        
+        await setDoc(DOC_REF, resetData, { merge: true });
         
         setAttempted([]);
         setCompleted([]);
         setBalance(0);
-
-        alert("¡Progreso de repaso eliminado!");
+        
+        alert("Progreso de repaso eliminado.");
         setView("home");
       } catch (e) {
-        console.error("Error en reset:", e);
+        console.error("Error al resetear:", e);
       }
     }
   };
@@ -295,29 +307,30 @@ export default function App() {
     ? Math.round((completedIds.length / attemptedIds.length) * 100) 
     : 0;
 
-  // --- PANTALLA DE CARGA ---
+  // --- 13. COMPONENTE DE CARGA ---
   if (!ready) return (
     <div style={S.center}>
       <Loader2 style={{ width: 32, height: 32, color: "#C8A84B", animation: "spin 1s linear infinite" }} />
+      <p style={{ marginTop: 12, fontSize: 12, color: "#C8A84B", fontWeight: 500 }}>Sincronizando con PAES Cloud...</p>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
-  // --- RENDERIZADO PRINCIPAL ---
+  // --- 14. ESTRUCTURA DE LA INTERFAZ ---
   return (
     <div style={S.root}>
-      {/* Estilos Globales e Inyectados */}
+      {/* CSS Global y Animaciones */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
         
-        *{box-sizing:border-box;margin:0;padding:0}
+        *{ box-sizing: border-box; margin: 0; padding: 0; }
         
-        button{
-          cursor:pointer;
-          border:none;
-          font-family:'DM Sans',sans-serif;
-          transition: all 0.2s ease;
+        body { 
+          background-color: #fcfaf5; 
+          -webkit-tap-highlight-color: transparent;
         }
+
+        button:active { transform: scale(0.98); }
         
         .home-card { 
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
@@ -325,20 +338,23 @@ export default function App() {
         }
         
         .home-card:hover { 
-          transform: translateY(-4px) scale(1.01); 
+          transform: translateY(-4px); 
           box-shadow: 0 12px 24px rgba(200, 168, 75, 0.15) !important;
           border-color: #C8A84B !important;
         }
 
-        .fade{animation:fadeUp 0.3s ease}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        
-        ::-webkit-scrollbar{width:4px}
-        ::-webkit-scrollbar-thumb{background:#C8A84B55;border-radius:4px}
+        .fade { animation: fadeUp 0.4s ease; }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(12px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #C8A84B44; border-radius: 10px; }
       `}</style>
 
-      {/* VISTA: LOGIN */}
+      {/* RENDERIZADO CONDICIONAL DE VISTAS */}
+      
       {view === "login" && (
         <Login
           loginPass={loginPass}
@@ -351,7 +367,6 @@ export default function App() {
         />
       )}
 
-      {/* VISTAS: APP (HEADER + BODY) */}
       {view !== "login" && (
         <>
           <Header
@@ -375,12 +390,12 @@ export default function App() {
                 setIsReview={setIsReview}
                 setQIdx={setQIdx}
                 setView={setView}
-                appIcon={appIcon} // Ahora el Home puede mostrar el logo
+                appIcon={appIcon}
                 S={S}
               />
             )}
 
-            {/* VISTA: TEST / PREGUNTAS */}
+            {/* VISTA: TEST (PREGUNTAS) */}
             {view === "test" && (
               currentQ ? (
                 <QuestionView
@@ -399,14 +414,15 @@ export default function App() {
                   S={S}
                 />
               ) : (
-                <div style={{ textAlign: "center", padding: 50 }}>
-                   <p style={{ color: "#9a8f7e" }}>No hay preguntas en esta sección.</p>
-                   <button onClick={goHome} style={{marginTop: 20, color: "#C8A84B"}}>Volver al inicio</button>
+                <div style={{ textAlign: "center", padding: 60 }} className="fade">
+                   <div style={{ marginBottom: 20, opacity: 0.5 }}><Sparkles size={48} /></div>
+                   <p style={{ color: "#9a8f7e", fontSize: 14 }}>No hay más preguntas disponibles en este momento.</p>
+                   <button onClick={goHome} style={{ marginTop: 24, color: "#C8A84B", fontWeight: 600 }}>Volver al menú</button>
                 </div>
               )
             )}
 
-            {/* VISTA: ADMIN / SETTINGS */}
+            {/* VISTA: SETTINGS (ADMIN) */}
             {view === "settings" && (
               <AdminPanel
                 settingsOpen={settingsOpen}
@@ -429,7 +445,7 @@ export default function App() {
               />
             )}
 
-            {/* VISTA: RESULTADOS FINALES */}
+            {/* VISTA: RESULTADOS */}
             {view === "results" && (
               <Results
                 balance={balance}
@@ -442,18 +458,19 @@ export default function App() {
             )}
           </div>
 
-          {/* FOOTER */}
+          {/* FOOTER PERSISTENTE */}
           <div style={{ 
             textAlign: "center", 
-            padding: "18px", 
+            padding: "24px 0", 
             fontSize: 10, 
             color: "#ccc4b5", 
-            letterSpacing: "0.12em", 
+            letterSpacing: "0.15em", 
             textTransform: "uppercase", 
-            borderTop: "1px solid #E8E5DC", 
+            borderTop: "1px solid #f0ede4", 
+            marginTop: 40,
             fontFamily: "'DM Sans',sans-serif" 
           }}>
-            PAES Study · 2026
+            PAES Study Premium · Edición 2026
           </div>
         </>
       )}
