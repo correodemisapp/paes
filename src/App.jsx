@@ -67,14 +67,17 @@ export default function App() {
   const [rates, setRates] = useState({ Fácil: 50, Intermedio: 150, Difícil: 250 });
 
   // --- 6. EFECTO DE CARGA INICIAL (FIREBASE) ---
-  useEffect(() => {
+useEffect(() => {
     const fetchData = async () => {
       try {
         const snap = await getDoc(DOC_REF);
         if (snap.exists()) {
           const d = snap.data();
-          // Carga segura de cada campo
-          if (d.balance !== undefined) setBalance(d.balance);
+          
+          // --- LOG DE VALIDACIÓN ---
+          console.log("☁️ Datos de Firebase recibidos:", d);
+          
+          if (d.balance !== undefined) setBalance(Number(d.balance)); // Aseguramos que sea número
           if (d.completedIds) setCompleted(d.completedIds);
           if (d.attemptedIds) setAttempted(d.attemptedIds);
           if (d.extraQs) setExtraQs(d.extraQs);
@@ -82,13 +85,11 @@ export default function App() {
           if (d.successImage) setSuccessImage(d.successImage);
           if (d.errorImage) setErrorImage(d.errorImage);
           if (d.rates) setRates(d.rates);
-        } else {
-          console.log("Creando nuevo perfil de usuario en Firebase...");
         }
       } catch (e) {
-        console.error("Error al cargar datos de Firebase:", e);
+        console.error("Error al cargar:", e);
       } finally {
-        setReady(true);
+        setReady(true); // Esto es clave
       }
     };
     fetchData();
@@ -96,6 +97,7 @@ export default function App() {
 
   // --- 7. PERSISTENCIA ATÓMICA (FIX: MERGE TRUE) ---
   const persist = async (patch) => {
+    if (!ready) return; // Si no hemos terminado de cargar, no guardamos nada.
     try {
       // Usamos merge: true para no borrar campos existentes (como el icono)
       await setDoc(DOC_REF, patch, { merge: true });
