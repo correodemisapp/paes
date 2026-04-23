@@ -65,6 +65,10 @@ export default function App() {
   const [errType, setErrType] = useState("error");
   const [generating, setGenerating] = useState(false);
   const [rates, setRates] = useState({ Fácil: 50, Intermedio: 150, Difícil: 250 });
+  //estadovpara fijar pregunta
+  const [activeQ, setActiveQ] = useState(null);
+
+
 
   // --- 6. EFECTO DE CARGA INICIAL (FIREBASE) ---
 useEffect(() => {
@@ -189,26 +193,39 @@ useEffect(() => {
     });
   };
 
-  const nextQ = () => {
+const nextQ = () => {
+    // 1. Volver arriba con suavidad
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // En modo normal, si se acaban las preguntas, mostrar resultados
-    if (!isReview && available.length <= 1) { 
-      setView("results"); 
-      return; 
-    }
-    
-    // Navegación interna
-    if (isReview) {
-      setQIdx((prev) => (prev + 1) % reviewQs.length);
-    } else {
-      setQIdx(0); 
-    }
-    
+    // 2. Limpiar los estados visuales del feedback
     setSelected(null);
     setConfirmed(null);
     setShowExp(false);
     setCorrect(null);
+
+    // 3. Lógica para elegir la siguiente pregunta
+    let nextQuestion = null;
+
+    if (isReview) {
+      // MODO REPASO: Usamos el índice para avanzar en el historial
+      const nextIdx = (qIdx + 1) % (reviewQs.length || 1);
+      setQIdx(nextIdx);
+      nextQuestion = reviewQs[nextIdx];
+    } else {
+      // MODO TEST: 
+      // Como la pregunta que acabas de responder ya se guardó en Firebase,
+      // 'available' ya se actualizó y esa pregunta YA NO ESTÁ.
+      // Por lo tanto, la siguiente es la que ahora quedó en la posición [0].
+      
+      if (available.length === 0) {
+        setView("results"); // Si no quedan más, vamos a resultados
+        return;
+      }
+      nextQuestion = available[0];
+    }
+
+    // 4. EL PASO MAESTRO: Actualizamos activeQ para que cambie la pantalla
+    setActiveQ(nextQuestion);
   };
 
   // --- 10. LÓGICA DE INTELIGENCIA ARTIFICIAL ---
@@ -317,6 +334,13 @@ useEffect(() => {
     ? Math.round((completedIds.length / attemptedIds.length) * 100) 
     : 0;
 
+      useEffect(() => {
+    if (ready && !activeQ) {
+      const initialQ = isReview ? reviewQs[0] : available[0];
+      setActiveQ(initialQ);
+    }
+  }, [ready, isReview, available, reviewQs, activeQ]);
+
   // --- 13. COMPONENTE DE CARGA ---
   if (!ready) return (
     <div style={S.center}>
@@ -329,39 +353,100 @@ useEffect(() => {
   // --- 14. ESTRUCTURA DE LA INTERFAZ ---
   return (
     <div style={S.root}>
+      
       {/* CSS Global y Animaciones */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
-        
-        *{ box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body { 
-          background-color: #fcfaf5; 
-          -webkit-tap-highlight-color: transparent;
-        }
+<style>{`
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-        button:active { transform: scale(0.98); }
-        
-        .home-card { 
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
-          cursor: pointer; 
-        }
-        
-        .home-card:hover { 
-          transform: translateY(-4px); 
-          box-shadow: 0 12px 24px rgba(200, 168, 75, 0.15) !important;
-          border-color: #C8A84B !important;
-        }
+  /* MARCO EXTERIOR: Fija el fondo y las esquinas */
+  .passage-wrapper {
+    position: relative;
+    background: #e5e3d8 !important; /* Tono hueso oscuro premium */
+    border: 1px solid #d1cfc1 !important;
+    border-radius: 12px !important;
+    overflow: hidden; 
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+  }
 
-        .fade { animation: fadeUp 0.4s ease; }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+  /* ESTILO BASE PARA LAS 4 ESQUINAS */
+  .passage-wrapper::before, 
+  .passage-wrapper::after, 
+  .top-right-corner, 
+  .bottom-left-corner {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+    z-index: 10;
+  }
 
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #C8A84B44; border-radius: 10px; }
-      `}</style>
+  /* 1. Superior Izquierda (usando before) */
+  .passage-wrapper::before {
+    top: 0; left: 0;
+    border-top: 2px solid #C8A84B;
+    border-left: 2px solid #C8A84B;
+    border-radius: 12px 0 0 0;
+  }
+
+  /* 2. Superior Derecha */
+  .top-right-corner {
+    top: 0; right: 0;
+    border-top: 2px solid #C8A84B;
+    border-right: 2px solid #C8A84B;
+    border-radius: 0 12px 0 0;
+  }
+
+  /* 3. Inferior Derecha (usando after) */
+  .passage-wrapper::after {
+    bottom: 0; right: 0;
+    border-bottom: 2px solid #C8A84B;
+    border-right: 2px solid #C8A84B;
+    border-radius: 0 0 12px 0;
+  }
+
+  /* 4. Inferior Izquierda */
+  .bottom-left-corner {
+    bottom: 0; left: 0;
+    border-bottom: 2px solid #C8A84B;
+    border-left: 2px solid #C8A84B;
+    border-radius: 0 0 0 12px;
+  }
+
+  /* --- ÁREA DE SCROLL Y TEXTO --- */
+  .scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: #C8A84B transparent;
+  }
+
+  /* Scrollbar para Chrome/Safari */
+  .scroll-area::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 15px 0; /* Evita que el scroll tape las esquinas */
+  }
+
+  .scroll-area::-webkit-scrollbar-thumb {
+    background-color: #C8A84B;
+    border-radius: 10px;
+    /* Crea el pasillo de aire: borde del color del fondo hueso */
+    border: 3px solid #e5e3d8; 
+  }
+
+  /* Ajuste para celulares */
+  @media (max-width: 480px) {
+    .scroll-area {
+      padding: 20px 25px 20px 15px !important;
+      font-size: 15px !important;
+    }
+    .passage-wrapper::before, .passage-wrapper::after, .top-right-corner, .bottom-left-corner {
+      width: 15px; height: 15px; /* Esquinas más discretas en móvil */
+    }
+  }
+`}</style>
 
       {/* RENDERIZADO CONDICIONAL DE VISTAS */}
       
@@ -409,7 +494,7 @@ useEffect(() => {
             {view === "test" && (
               currentQ ? (
                 <QuestionView
-                  currentQ={currentQ}
+                  currentQ={activeQ}
                   goHome={goHome}
                   confirmAnswer={confirmAnswer}
                   selected={selected}
