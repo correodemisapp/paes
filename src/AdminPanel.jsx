@@ -69,10 +69,11 @@ export default function AdminPanel({
           <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-main)" }}>Generador de Contenido</span>
         </div>
         <button 
-          onClick={generateWithAI} disabled={generating}
+          onClick={generateWithAI} 
+          disabled={generating}
           style={{ ...S.btnPrimary, width: "100%", height: 50, opacity: generating ? 0.7 : 1 }}
         >
-          {generating ? <Loader2 className="spin" /> : <Sparkles size={18} style={{ marginRight: 8 }} />}
+          {generating ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} style={{ marginRight: 8 }} />}
           {generating ? "Generando Preguntas..." : "Generar 3 Preguntas con IA"}
         </button>
         {err && <p style={{ color: errType === "error" ? "#ef4444" : "#22c55e", fontSize: 12, marginTop: 12 }}>{err}</p>}
@@ -144,7 +145,7 @@ export default function AdminPanel({
           <Trash2 size={14} /> Reiniciar Todo el Progreso
         </button>
 
-        {/* BOTÓN: CERRAR CONFIGURACIÓN (Formato Tarjeta Premium) */}
+        {/* BOTÓN: CERRAR CONFIGURACIÓN */}
         <button 
           className="home-card"
           onClick={() => { setSettingsOpen(false); goHome(); }} 
