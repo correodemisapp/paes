@@ -79,32 +79,46 @@ export default function App() {
   };
 
   // --- FUNCIÓN GENERAR CON IA ---
-  const generateWithAI = async () => {
-    if (generating) return;
-    setGenerating(true);
-    setErr("");
-    
-    try {
-      // Endpoint de Vercel (debe existir en /api/generate.js)
-      const res = await fetch("/api/generate", { method: "POST" });
-      if (!res.ok) throw new Error("Fallo en la API");
-      
-      const data = await res.json();
-      const newQs = data.questions || [];
-      
-      const updatedExtra = [...extraQs, ...newQs];
-      setExtraQs(updatedExtra);
-      await persist({ extraQs: updatedExtra });
-      
-      setErrType("success");
-      setErr(`¡Éxito! Se generaron ${newQs.length} preguntas.`);
-    } catch (e) {
-      setErrType("error");
-      setErr("Error de conexión. Verifica las API Keys en Vercel.");
-    } finally {
-      setGenerating(false);
+ const generateWithAI = async () => {
+  if (generating) return;
+  setGenerating(true);
+  setErr("");
+  
+  try {
+    // Enviamos el System Prompt y el User Prompt definidos en questions.js
+    const res = await fetch("/api/generate", { 
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system: AI_SYSTEM,
+        messages: [{ role: "user", content: AI_USER }]
+      })
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Fallo en la API");
     }
-  };
+    
+    const data = await res.json();
+    const newQs = data.questions || [];
+    
+    if (newQs.length === 0) throw new Error("La IA no devolvió preguntas válidas");
+
+    const updatedExtra = [...extraQs, ...newQs];
+    setExtraQs(updatedExtra);
+    await persist({ extraQs: updatedExtra });
+    
+    setErrType("success");
+    setErr(`¡Éxito! Se generaron ${newQs.length} preguntas nuevas.`);
+  } catch (e) {
+    console.error("Error IA:", e);
+    setErrType("error");
+    setErr(e.message || "Error de conexión. Revisa los logs de Vercel.");
+  } finally {
+    setGenerating(false);
+  }
+};
 
   const allQs = useMemo(() => [...(STATIC_QUESTIONS || []), ...(extraQs || [])], [extraQs]);
   const available = useMemo(() => allQs.filter(q => !attemptedIds.includes(q.id)), [allQs, attemptedIds]);
