@@ -9,7 +9,7 @@ export default function QuestionView({
   selected, 
   setSelected, 
   showExp, 
-  confirmed, 
+  confirmed,  
   correct, 
   nextQ, 
   successImage, 
