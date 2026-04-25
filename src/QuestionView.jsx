@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Send, X } from "lucide-react";
 import FeedbackModal from "./FeedbackModal";
 
@@ -44,6 +44,10 @@ export default function QuestionView({
     ? currentQ.options 
     : Object.entries(currentQ.options).map(([id, text]) => ({ id, text }));
 
+    useEffect(() => {
+    setDiscardedIds([]); // Vacía las tachaduras
+  }, [currentQ]); // Se ejecuta cada vez que 'currentQ' cambia
+  
   return (
     <div className="fade">
       {/* --- CABECERA (Badge de Dificultad Dinámico) --- */}

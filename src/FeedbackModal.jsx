@@ -9,7 +9,9 @@ export default function FeedbackModal({
   return (
     <div style={S.modalBackdrop}>
       <div className="fade" style={{
-        background: "#fff",
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-passage)", // Opcional, le da un toque premium en modo oscuro
+
         width: "100%",
         maxWidth: "400px",
         borderRadius: "24px",
@@ -60,7 +62,7 @@ export default function FeedbackModal({
           <p style={{ 
             fontFamily: "'DM Sans', sans-serif", 
             fontSize: 14, 
-            color: "#3d3628", 
+            color: "var(--text-main)", 
             lineHeight: 1.6,
             whiteSpace: "pre-wrap" // Respeta los saltos de línea de la IA
           }}>
