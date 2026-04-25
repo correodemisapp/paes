@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, Send } from "lucide-react";
+import React, { useState } from 'react';
+import { ArrowLeft, Send, X } from "lucide-react";
 import FeedbackModal from "./FeedbackModal";
 
 export default function QuestionView({ 
@@ -15,9 +15,22 @@ export default function QuestionView({
   successImage, 
   errorImage, 
   DIFF_LIGHT, 
-  S 
+  S,
+  fontSize = 15 // Recibe el tamaño de fuente del estado global o default
 }) {
   
+  // --- ESTADO LOCAL PARA OPCIONES DESCARTADAS ---
+  const [discardedIds, setDiscardedIds] = useState([]);
+
+  // Función para tachar/destachar una opción
+  const toggleDiscard = (id, e) => {
+    e.stopPropagation(); // Evita que al tachar también se seleccione la opción
+    if (showExp) return; // No permitir tachar si ya se mostró la explicación
+    setDiscardedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
   // 1. Guardia de seguridad: Si no hay datos, mostramos carga
   if (!currentQ || !currentQ.options) {
     return (
@@ -27,10 +40,10 @@ export default function QuestionView({
     );
   }
 
-  // Configuración de colores según dificultad
+  // Configuración de colores según dificultad (Badge superior)
   const d = DIFF_LIGHT[currentQ.difficulty] || DIFF_LIGHT.Fácil;
 
-  // 2. Normalización de opciones (Convierte objeto {A: "..."} a arreglo)
+  // 2. Normalización de opciones (Convierte objeto {A: "..."} a arreglo si es necesario)
   const optionsArray = Array.isArray(currentQ.options) 
     ? currentQ.options 
     : Object.entries(currentQ.options).map(([id, text]) => ({ id, text }));
@@ -50,7 +63,7 @@ export default function QuestionView({
           }}>
             {currentQ.difficulty}
           </span>
-          <span style={{fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"#9a8f7e", fontWeight:500}}>
+          <span style={{fontFamily:"'DM Sans',sans-serif", fontSize:11, color:"var(--text-sec)", fontWeight:500}}>
             {currentQ.category}
           </span>
         </div>
@@ -58,21 +71,20 @@ export default function QuestionView({
 
       {/* --- ÁREA DE TEXTO (CÁPSULA CON ESQUINAS DORADAS) --- */}
       <div style={S.passageWrapper} className="passage-wrapper">
-        {/* Esquinas manuales fijas (las otras 2 las genera el CSS ::before/::after) */}
         <div className="top-right-corner"></div>
         <div className="bottom-left-corner"></div>
         
-        {/* Contenedor scrolleable */}
         <div style={S.passageScroll} className="scroll-area">
           {currentQ.text?.split("\n\n").map((p, i, arr) => (
             <p key={i} style={{
-              fontSize: 15,          // Tamaño optimizado para móvil
-              color: "#1a202c",      // Gris carbón (mejor legibilidad)
+              fontSize: fontSize,      // Tamaño dinámico (UX)
+              color: "var(--text-main)", // Adaptable al tema
               lineHeight: 1.7, 
               marginBottom: i < arr.length - 1 ? 14 : 0,
-              fontStyle: "normal",   // Sin cursivas
-              fontWeight: 450,       // Peso nítido
-              fontFamily: "'Inter', sans-serif"
+              fontStyle: "normal",
+              fontWeight: 450,
+              fontFamily: "'Inter', sans-serif",
+              transition: "font-size 0.2s ease"
             }}>
               {p}
             </p>
@@ -85,10 +97,11 @@ export default function QuestionView({
         fontFamily:"'Playfair Display', serif", 
         fontWeight:700, 
         fontSize:17, 
-        color:"#1a1a2e", 
+        color:"var(--text-title)", // Variable para leerse bien en azul/celeste
         lineHeight:1.4, 
         marginTop: 20,
-        marginBottom:16
+        marginBottom:16,
+        transition: "color 0.3s ease"
       }}>
         {currentQ.question}
       </h3>
@@ -98,52 +111,76 @@ export default function QuestionView({
         {optionsArray.map(opt => {
           const isConf = confirmed === opt.id;
           const isRight = showExp && opt.id === currentQ.correct;
+          const isSelected = selected === opt.id;
+          const isDiscarded = discardedIds.includes(opt.id);
           
-          // Lógica de colores de los botones
-          let bg="#fff", border="1px solid #E8E5DC", lBg="#f0ede4", lCol="#9a8f7e";
+          // Lógica de colores dinámica
+          let bg = "var(--bg-card)";
+          let border = "1px solid var(--border-passage)";
+          let lBg = "var(--bg-passage)";
+          let lCol = "var(--accent)";
           
-          if (!showExp && selected === opt.id) { 
-            bg="#fffbf0"; border="1px solid #C8A84B"; lBg="#1a1a2e"; lCol="#C8A84B"; 
+          if (!showExp && isSelected) { 
+            bg="rgba(200, 168, 75, 0.05)"; border="1.5px solid var(--accent)"; lBg="var(--text-title)"; lCol="var(--accent)"; 
           }
           if (isConf && correct) { 
-            bg="#f0faf4"; border="1px solid #86efac"; lBg="#2d6a4f"; lCol="#fff"; 
+            bg="#f0faf4"; border="1.5px solid #86efac"; lBg="#2d6a4f"; lCol="#fff"; 
           }
           if (isConf && !correct) { 
             bg="#fff5f5"; border="1px solid #fca5a5"; lBg="#991b1b"; lCol="#fff"; 
           }
           if (isRight && !isConf) { 
-            bg="#f0faf4"; border="1px solid #86efac"; lBg="#2d6a4f"; lCol="#fff"; 
+            bg="#f0faf4"; border="1.5px solid #86efac"; lBg="#2d6a4f"; lCol="#fff"; 
           }
           
           return (
-            <button 
-              key={opt.id} 
-              disabled={!!showExp} 
-              onClick={() => setSelected(opt.id)}
-              style={{
-                background:bg, 
-                border, 
-                borderRadius:11, 
-                padding:"12px 14px", 
-                display:"flex", 
-                alignItems:"flex-start", 
-                gap:12, 
-                textAlign:"left", 
-                transition:"all 0.15s",
-                cursor: !!showExp ? "default" : "pointer"
-              }}
-            >
-              <span style={{
-                width:30, height:30, borderRadius:7, 
-                display:"flex", alignItems:"center", justifyContent:"center", 
-                background:lBg, color:lCol, fontWeight:600, fontSize:12, flexShrink: 0
-              }}>
-                {opt.id}
-              </span>
-              <span style={{fontSize:13, color:"#3d3628", fontWeight:500, lineHeight:1.55}}>
-                {opt.text}
-              </span>
-            </button>
+            <div key={opt.id} style={{ position: "relative" }} className="option-container">
+              <button 
+                disabled={!!showExp || isDiscarded} 
+                onClick={() => setSelected(opt.id)}
+                className={isDiscarded ? "discarded" : ""}
+                style={{
+                  width: "100%",
+                  background:bg, 
+                  border, 
+                  borderRadius:11, 
+                  padding:"12px 14px", 
+                  display:"flex", 
+                  alignItems:"flex-start", 
+                  gap:12, 
+                  textAlign:"left", 
+                  transition:"all 0.15s",
+                  cursor: (!!showExp || isDiscarded) ? "default" : "pointer"
+                }}
+              >
+                <span style={{
+                  width:30, height:30, borderRadius:7, 
+                  display:"flex", alignItems:"center", justifyContent:"center", 
+                  background:lBg, color:lCol, fontWeight:600, fontSize:12, flexShrink: 0
+                }}>
+                  {opt.id}
+                </span>
+                <span style={{
+                  fontSize:13, 
+                  color: isDiscarded ? "var(--text-sec)" : "var(--text-main)", 
+                  fontWeight: 500, 
+                  lineHeight: 1.55 
+                }}>
+                  {opt.text}
+                </span>
+              </button>
+
+              {/* BOTÓN PARA TACHAR (Solo visible antes de confirmar) */}
+              {!showExp && (
+                <button 
+                  onClick={(e) => toggleDiscard(opt.id, e)}
+                  title="Descartar opción"
+                  className="discard-btn"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
