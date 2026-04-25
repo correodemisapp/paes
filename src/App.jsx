@@ -34,7 +34,7 @@ export default function App() {
   const [view, setView] = useState("login");
   const [balance, setBalance] = useState(0);
   
-  // --- 2. ESTADOS DE TEMA Y UX (EL FIX PARA EL ERROR) ---
+  // --- 2. ESTADOS DE TEMA Y UX ---
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
   const [fontSize, setFontSize] = useState(16);
 
@@ -115,14 +115,17 @@ export default function App() {
     if (!selected || showExp || !activeQ) return;
     const isC = selected === activeQ.correct;
     const rate = rates[activeQ.difficulty] || 100;
+    const newBal = isC ? balance + rate : Math.max(0, balance - (rate * 0.5));
+    
     setCorrect(isC); setConfirmed(selected); setShowExp(true);
+    setBalance(newBal); // Actualización optimista del balance
+    
     if (isReview) return;
 
     const newAtt = [...new Set([...attemptedIds, activeQ.id])];
     const newComp = isC ? [...new Set([...completedIds, activeQ.id])] : completedIds;
-    const newBal = isC ? balance + rate : Math.max(0, balance - (rate * 0.5));
 
-    setAttempted(newAtt); setCompleted(newComp); setBalance(newBal);
+    setAttempted(newAtt); setCompleted(newComp); 
     await persist({ balance: newBal, completedIds: newComp, attemptedIds: newAtt });
   };
 
@@ -166,85 +169,80 @@ export default function App() {
     <div style={{ ...S.root, backgroundColor: "var(--bg-app)", minHeight: "100vh" }} data-theme={theme}>
       
       {/* BLOQUE DE ESTILOS MAESTRO (CON TODOS LOS FIXES) */}
-<style>{`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-  /* --- 1. VARIABLES DE TEMA --- */
-  :root {
-    --bg-app: #f8f8f6; --bg-card: #ffffff; --bg-passage: #e5e3d8;
-    --text-main: #1a202c; --text-title: #1a1a2e; --text-sec: #718096;
-    --accent: #C8A84B; --border-passage: #d1cfc1;
-    --prog-fill: #1e3a8a; --prog-bg: rgba(30, 58, 138, 0.1);
-    
-    /* Configuración Parental (Modo Claro) */
-    --border-ghost: #a8a697; --text-ghost: #1a202c;
-    
-    /* Dificultades (Modo Claro) */
-    --diff-f-bg: #f0faf4; --diff-f-tx: #2d6a4f; --diff-f-bd: #86efac;
-    --diff-i-bg: #fffbf0; --diff-i-tx: #92601a; --diff-i-bd: #fef3c7;
-    --diff-d-bg: #fff5f5; --diff-d-tx: #991b1b; --diff-d-bd: #fca5a5;
-  }
+        /* --- 1. VARIABLES DE TEMA --- */
+        :root {
+          --bg-app: #f8f8f6; --bg-card: #ffffff; --bg-passage: #e5e3d8;
+          --text-main: #1a202c; --text-title: #1a1a2e; --text-sec: #718096;
+          --accent: #C8A84B; --border-passage: #d1cfc1;
+          --prog-fill: #1e3a8a; --prog-bg: rgba(30, 58, 138, 0.1);
+          
+          /* Configuración Parental (Modo Claro) */
+          --border-ghost: #a8a697; --text-ghost: #1a202c;
+          
+          /* Dificultades (Modo Claro) */
+          --diff-f-bg: #f0faf4; --diff-f-tx: #2d6a4f; --diff-f-bd: #86efac;
+          --diff-i-bg: #fffbf0; --diff-i-tx: #92601a; --diff-i-bd: #fef3c7;
+          --diff-d-bg: #fff5f5; --diff-d-tx: #991b1b; --diff-d-bd: #fca5a5;
+        }
 
-  [data-theme='dark'] {
-    --bg-app: #121212; --bg-card: #1e1e1e; --bg-passage: #252525;
-    --text-main: #e2e8f0; --text-title: #60a5fa; --text-sec: #a0aec0;
-    --accent: #d4af37; --border-passage: #333333;
-    --prog-fill: #60a5fa; --prog-bg: rgba(96, 165, 250, 0.2);
-    
-    /* Configuración Parental (Modo Oscuro) */
-    --border-ghost: #333333; --text-ghost: #d4af37;
+        [data-theme='dark'] {
+          --bg-app: #121212; --bg-card: #1e1e1e; --bg-passage: #252525;
+          --text-main: #e2e8f0; --text-title: #60a5fa; --text-sec: #a0aec0;
+          --accent: #d4af37; --border-passage: #333333;
+          --prog-fill: #60a5fa; --prog-bg: rgba(96, 165, 250, 0.2);
+          
+          /* Configuración Parental (Modo Oscuro) */
+          --border-ghost: #333333; --text-ghost: #d4af37;
 
-    /* Dificultades (Modo Oscuro - Neón) */
-    --diff-f-bg: rgba(74, 222, 128, 0.15); --diff-f-tx: #4ade80; --diff-f-bd: #2d6a4f;
-    --diff-i-bg: rgba(251, 191, 36, 0.15); --diff-i-tx: #fbbf24; --diff-i-bd: #92601a;
-    --diff-d-bg: rgba(248, 113, 113, 0.15); --diff-d-tx: #fca5a5; --diff-d-bd: #991b1b;
-  }
+          /* Dificultades (Modo Oscuro - Neón) */
+          --diff-f-bg: rgba(74, 222, 128, 0.15); --diff-f-tx: #4ade80; --diff-f-bd: #2d6a4f;
+          --diff-i-bg: rgba(251, 191, 36, 0.15); --diff-i-tx: #fbbf24; --diff-i-bd: #92601a;
+          --diff-d-bg: rgba(248, 113, 113, 0.15); --diff-d-tx: #fca5a5; --diff-d-bd: #991b1b;
+        }
 
-  /* --- 2. REGLAS GLOBALES --- */
-  body { background: var(--bg-app); transition: 0.3s; }
-  [data-theme] h1, [data-theme] h2 { color: var(--accent) !important; }
-  [data-theme] h3 { color: var(--text-title) !important; }
-  
-  /* Protección de texto: No volvemos blanco el texto de los badges ni de botones de feedback */
-  [data-theme='dark'] p:not(button p):not(.diff-badge p):not(.admin-panel-container p), 
-  [data-theme='dark'] span:not(button span):not(.diff-badge):not(.admin-panel-container span) { 
-    color: var(--text-main) !important; 
-  }
+        /* --- 2. REGLAS GLOBALES --- */
+        body { background: var(--bg-app); transition: 0.3s; }
+        [data-theme] h1, [data-theme] h2 { color: var(--accent) !important; }
+        [data-theme] h3 { color: var(--text-title) !important; }
+        
+        /* Protección de texto: No volvemos blanco el texto de los badges ni de botones de feedback */
+        [data-theme='dark'] p:not(button p):not(.diff-badge p):not(.admin-panel-container p), 
+        [data-theme='dark'] span:not(button span):not(.diff-badge):not(.admin-panel-container span) { 
+          color: var(--text-main) !important; 
+        }
 
-  /* --- 3. BADGES DE DIFICULTAD --- */
-  .diff-badge { 
-    padding: 4px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; 
-    text-transform: uppercase; border: 1px solid transparent; display: inline-block; 
-  }
-  .diff-badge.Fácil { background: var(--diff-f-bg) !important; color: var(--diff-f-tx) !important; border-color: var(--diff-f-bd) !important; }
-  .diff-badge.Intermedio { background: var(--diff-i-bg) !important; color: var(--diff-i-tx) !important; border-color: var(--diff-i-bd) !important; }
-  .diff-badge.Difícil { background: var(--diff-d-bg) !important; color: var(--diff-d-tx) !important; border-color: var(--diff-d-bd) !important; }
+        /* --- 3. BADGES DE DIFICULTAD --- */
+        .diff-badge { 
+          padding: 4px 12px; border-radius: 6px; font-size: 10px; font-weight: 700; 
+          text-transform: uppercase; border: 1px solid transparent; display: inline-block; 
+        }
+        .diff-badge.Fácil { background: var(--diff-f-bg) !important; color: var(--diff-f-tx) !important; border-color: var(--diff-f-bd) !important; }
+        .diff-badge.Intermedio { background: var(--diff-i-bg) !important; color: var(--diff-i-tx) !important; border-color: var(--diff-i-bd) !important; }
+        .diff-badge.Difícil { background: var(--diff-d-bg) !important; color: var(--diff-d-tx) !important; border-color: var(--diff-d-bd) !important; }
 
-  /* --- 4. EXCEPCIÓN: BOTONES FEEDBACK --- */
-  [data-theme='dark'] button[style*="background: #f0faf4"], 
-  [data-theme='dark'] button[style*="background: #fff5f5"],
-  [data-theme='dark'] button[style*="background: white"] { color: #1a1a2e !important; }
+        /* --- 4. EXCEPCIÓN: BOTONES FEEDBACK --- */
+        [data-theme='dark'] button[style*="background: #f0faf4"], 
+        [data-theme='dark'] button[style*="background: #fff5f5"],
+        [data-theme='dark'] button[style*="background: white"] { color: #1a1a2e !important; }
 
-  /* --- 5. AISLAMIENTO PANEL ADMIN --- */
-  .admin-panel-container h2 { color: var(--accent) !important; }
-  .admin-panel-container p, .admin-panel-container span:not(.diff-badge) { color: var(--text-main) !important; }
-  .admin-panel-container input { 
-    background-color: var(--bg-card) !important; 
-    color: var(--text-main) !important; 
-    border: 1px solid var(--border-passage) !important; 
-  }
+        /* --- 5. AISLAMIENTO PANEL ADMIN --- */
+        .admin-panel-container h2 { color: var(--accent) !important; }
+        .admin-panel-container p, .admin-panel-container span:not(.diff-badge) { color: var(--text-main) !important; }
+        .admin-panel-container input { 
+          background-color: var(--bg-card) !important; 
+          color: var(--text-main) !important; 
+          border: 1px solid var(--border-passage) !important; 
+        }
 
-  /* --- 6. CÁPSULA Y OTROS --- */
-  .passage-wrapper { position: relative; background: var(--bg-passage) !important; border: 1px solid var(--border-passage) !important; border-radius: 12px; overflow: hidden; }
-  .passage-wrapper::before, .passage-wrapper::after, .top-right-corner, .bottom-left-corner { content: ""; position: absolute; width: 22px; height: 22px; border-color: var(--accent); z-index: 10; pointer-events: none; }
-  .passage-wrapper::before { top:0; left:0; border-top:2px solid; border-left:2px solid; border-radius: 12px 0 0 0; }
-  .top-right-corner { top:0; right:0; border-top:2px solid; border-right:2px solid; border-radius: 0 12px 0 0; }
-  .passage-wrapper::after { bottom:0; right:0; border-bottom:2px solid; border-right:2px solid; border-radius: 0 0 12px 0; }
-  .bottom-left-corner { bottom:0; left:0; border-bottom:2px solid; border-left:2px solid; border-radius: 0 0 0 12px; }
-  
-  .option-container:hover .discard-btn { opacity: 1 !important; }
-  .discarded { opacity: 0.3 !important; filter: grayscale(1); text-decoration: line-through; pointer-events: none; }
-`}</style>
+        /* --- 6. CÁPSULA Y OTROS --- */
+        .passage-wrapper { position: relative; background: var(--bg-passage) !important; border: 1px solid var(--border-passage) !important; border-radius: 12px; overflow: hidden; }
+        
+        .option-container:hover .discard-btn { opacity: 1 !important; }
+        .discarded { opacity: 0.3 !important; filter: grayscale(1); text-decoration: line-through; pointer-events: none; }
+      `}</style>
 
       {view === "login" ? (
         <Login loginPass={loginPass} setLoginPass={setLoginPass} setView={setView} setErr={setErr} err={err} appIcon={appIcon} S={S} />
