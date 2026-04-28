@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sun, Moon, Plus, Minus } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
 export default function Header({ 
   appIcon, 
@@ -9,8 +9,7 @@ export default function Header({
   fmt, 
   S, 
   theme, 
-  toggleTheme, 
-  setFontSize 
+  toggleTheme
 }) {
   
   const totalQuestions = allQs?.length || 0;
@@ -64,19 +63,6 @@ export default function Header({
         }}>
           {realAttemptedCount} / {totalQuestions}
         </p>
-        
-        {/* ETIQUETA CORREGIDA: Ahora usa var(--text-sec) */}
-        <span style={{ 
-          fontSize: "8px", 
-          color: "var(--text-sec)", // <--- ANTES: #9a8f7e (invisible)
-          textTransform: "uppercase", 
-          letterSpacing: "0.12em",
-          marginBottom: "4px",
-          fontWeight: 600
-        }}>
-          {isComplete ? "¡Misión Completa!" : "Progreso Actual"}
-        </span>
-
         <div style={{ 
           width: "100%", 
           maxWidth: "120px", 
@@ -90,44 +76,21 @@ export default function Header({
             width: `${progress}%`, 
             height: "100%", 
             background: isComplete ? "#2d6a4f" : "var(--prog-fill)", 
-            boxShadow: isComplete ? "0 0 10px #2d6a4f" : "0 0 8px var(--prog-bg)",
             transition: "width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" 
           }} />
         </div>
       </div>
       
-      {/* 3. DERECHA: Controles y Saldo */}
-      <div style={{ flex: 1.2, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
-        
-        <div style={{ 
-          display: "flex", 
-          background: "var(--bg-app)", 
-          borderRadius: "8px", 
-          padding: "2px",
-          border: "1px solid var(--border-passage)" 
-        }}>
-          <button 
-            onClick={() => setFontSize(prev => Math.max(13, prev - 1))}
-            style={{ background: "none", border: "none", padding: "4px", cursor: "pointer", color: "var(--accent)" }}
-          >
-            <Minus size={14} />
-          </button>
-          <button 
-            onClick={() => setFontSize(prev => Math.min(22, prev + 1))}
-            style={{ background: "none", border: "none", padding: "4px", cursor: "pointer", color: "var(--accent)" }}
-          >
-            <Plus size={14} />
-          </button>
-        </div>
-
+      {/* 3. DERECHA: Tema y Saldo */}
+      <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 12 }}>
         <button 
           onClick={toggleTheme} 
           style={{
             background: "var(--bg-app)",
             border: "1px solid var(--border-passage)",
             borderRadius: "8px",
-            width: "30px",
-            height: "30px",
+            width: "32px",
+            height: "32px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -135,22 +98,20 @@ export default function Header({
             color: "var(--accent)"
           }}
         >
-          {theme === "light" ? <Moon size={15} /> : <Sun size={15} />}
+          {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
         </button>
 
-        {/* SALDO CORREGIDO: Ahora usa var(--text-main) */}
-        <div style={{...S.balancePill, padding: "4px 10px", minWidth: "auto"}}>
+        <div style={{...S.balancePill, padding: "6px 12px", minWidth: "auto"}}>
           <span style={{ 
             fontFamily: "'IBM Plex Mono',monospace", 
             fontWeight: 700, 
             fontSize: 12, 
-            color: "var(--text-main)" // <--- ANTES: #1a1a2e (invisible)
+            color: "var(--text-main)" 
           }}>
             {fmt(balance)}
           </span>
         </div>
       </div>
-
     </div>
   );
 }

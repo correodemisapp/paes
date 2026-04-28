@@ -206,7 +206,8 @@ export default function App() {
           <Header appIcon={appIcon} attemptedIds={attemptedIds} allQs={allQs} balance={balance} fmt={fmt} S={S} theme={theme} toggleTheme={toggleTheme} setFontSize={setFontSize} />
           <div style={S.body}>
             {view === "home" && <Home attemptedIds={attemptedIds} allQs={allQs} completedIds={completedIds} accuracy={accuracy} available={available} setIsReview={setIsReview} setQIdx={setQIdx} setView={setView} S={S} />}
-            {view === "test" && activeQ && <QuestionView currentQ={activeQ} goHome={goHome} confirmAnswer={confirmAnswer} selected={selected} setSelected={setSelected} showExp={showExp} confirmed={confirmed} correct={correct} nextQ={nextQ} successImage={successImage} errorImage={errorImage} DIFF_LIGHT={DIFF_LIGHT} S={S} fontSize={fontSize} />}
+            {view === "test" && activeQ && 
+            <QuestionView currentQ={activeQ} fontSize={fontSize} setFontSize={setFontSize} goHome={goHome} confirmAnswer={confirmAnswer} selected={selected} setSelected={setSelected} showExp={showExp} confirmed={confirmed} correct={correct} nextQ={nextQ} successImage={successImage} errorImage={errorImage} DIFF_LIGHT={DIFF_LIGHT} S={S} fontSize={fontSize} />}
             {view === "settings" && (
               <AdminPanel 
                 settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} 
