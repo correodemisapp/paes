@@ -49,14 +49,37 @@ export default function AdminPanel({
 
       {/* GENERADOR IA */}
       <div style={{ width: "100%", background: "var(--bg-card)", padding: 20, borderRadius: 18, border: "1px solid var(--border-passage)", marginBottom: 20 }}>
-        <button 
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, textAlign: "left" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(200,168,75,0.12)", border: "1px solid rgba(200,168,75,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Sparkles size={16} color="var(--accent)" />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "var(--text-main)" }}>Generador con IA</p>
+            <p style={{ margin: 0, fontSize: 11, color: "var(--text-sec)", marginTop: 2 }}>Crea 3 preguntas nuevas automáticamente</p>
+          </div>
+        </div>
+
+        <button
           onClick={generateWithAI} disabled={generating}
-          style={{ ...S.btnPrimary, width: "100%", height: 50, opacity: generating ? 0.7 : 1 }}
+          style={{ ...S.btnPrimary, width: "100%", maxWidth: "100%", height: 46, fontSize: 14, opacity: generating ? 0.7 : 1, transition: "opacity 0.2s ease" }}
         >
-          {generating ? <Loader2 className="spin" size={18} /> : <Sparkles size={18} style={{ marginRight: 8 }} />}
-          {generating ? "Generando..." : "Generar 3 Preguntas con IA"}
+          {generating
+            ? <><Loader2 className="spin" size={16} /> Generando...</>
+            : <><Wand2 size={16} /> Generar preguntas</>
+          }
         </button>
-        {err && <p style={{ color: errType === "error" ? "#ef4444" : "#22c55e", fontSize: 12, marginTop: 12 }}>{err}</p>}
+
+        {err && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 8,
+            marginTop: 12, padding: "10px 14px", borderRadius: 10,
+            background: errType === "error" ? "#fef2f2" : "#f0faf4",
+            border: `1px solid ${errType === "error" ? "#fca5a5" : "#86efac"}`
+          }}>
+            <span style={{ fontSize: 14 }}>{errType === "error" ? "⚠️" : "✅"}</span>
+            <p style={{ margin: 0, color: errType === "error" ? "#991b1b" : "#15803d", fontSize: 12, fontWeight: 500 }}>{err}</p>
+          </div>
+        )}
       </div>
 
       {/* TARIFAS */}
