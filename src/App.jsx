@@ -1,9 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Trophy, Settings, ChevronRight, Brain, Lock, History, Send, 
-  Layers, Loader2, Sparkles, Upload, Wand2, ArrowLeft, Zap, 
-  XCircle, CheckCircle, Trash2, PlusCircle, Database
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -50,6 +46,7 @@ export default function App() {
   const [errType, setErrType] = useState("error");
   const [generating, setGenerating] = useState(false);
   const [rates, setRates] = useState({ Fácil: 50, Intermedio: 150, Difícil: 250 });
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,53 +69,46 @@ export default function App() {
     fetchData();
   }, []);
 
+  // Persiste tema en localStorage
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
   const persist = async (patch) => {
     if (!ready) return;
     try { await setDoc(DOC_REF, patch, { merge: true }); }
     catch (e) { console.error("Error persistencia:", e); }
   };
 
-  // --- FUNCIÓN GENERAR CON IA ---
- const generateWithAI = async () => {
-  if (generating) return;
-  setGenerating(true);
-  setErr("");
-  
-  try {
-    // Enviamos el System Prompt y el User Prompt definidos en questions.js
-    const res = await fetch("/api/generate", { 
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        system: AI_SYSTEM,
-        messages: [{ role: "user", content: AI_USER }]
-      })
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || "Fallo en la API");
+  const generateWithAI = async () => {
+    if (generating) return;
+    setGenerating(true);
+    setErr("");
+    try {
+      const res = await fetch("/api/generate", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system: AI_SYSTEM, messages: [{ role: "user", content: AI_USER }] })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Fallo en la API");
+      }
+      const data = await res.json();
+      const newQs = data.questions || [];
+      if (newQs.length === 0) throw new Error("La IA no devolvió preguntas válidas");
+      const updatedExtra = [...extraQs, ...newQs];
+      setExtraQs(updatedExtra);
+      await persist({ extraQs: updatedExtra });
+      setErrType("success");
+      setErr(`¡Éxito! Se generaron ${newQs.length} preguntas nuevas.`);
+    } catch (e) {
+      setErrType("error");
+      setErr(e.message || "Error de conexión. Revisa los logs de Vercel.");
+    } finally {
+      setGenerating(false);
     }
-    
-    const data = await res.json();
-    const newQs = data.questions || [];
-    
-    if (newQs.length === 0) throw new Error("La IA no devolvió preguntas válidas");
-
-    const updatedExtra = [...extraQs, ...newQs];
-    setExtraQs(updatedExtra);
-    await persist({ extraQs: updatedExtra });
-    
-    setErrType("success");
-    setErr(`¡Éxito! Se generaron ${newQs.length} preguntas nuevas.`);
-  } catch (e) {
-    console.error("Error IA:", e);
-    setErrType("error");
-    setErr(e.message || "Error de conexión. Revisa los logs de Vercel.");
-  } finally {
-    setGenerating(false);
-  }
-};
+  };
 
   const allQs = useMemo(() => [...(STATIC_QUESTIONS || []), ...(extraQs || [])], [extraQs]);
   const available = useMemo(() => allQs.filter(q => !attemptedIds.includes(q.id)), [allQs, attemptedIds]);
@@ -128,7 +118,10 @@ export default function App() {
     if (ready && !activeQ) setActiveQ(isReview ? reviewQs[0] : available[0]);
   }, [ready, isReview, available, reviewQs, activeQ]);
 
-  const goHome = () => { setView("home"); setSelected(null); setConfirmed(null); setShowExp(false); setCorrect(null); setErr(""); };
+  const goHome = () => { 
+    setView("home"); setSelected(null); setConfirmed(null); 
+    setShowExp(false); setCorrect(null); setErr(""); 
+  };
 
   const confirmAnswer = async () => {
     if (!selected || showExp || !activeQ) return;
@@ -156,6 +149,7 @@ export default function App() {
   };
 
   const toggleTheme = () => setTheme(prev => prev === "light" ? "dark" : "light");
+
   const uploadImg = (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -170,13 +164,15 @@ export default function App() {
   };
 
   const resetAll = async () => {
-    if (window.confirm("¿Limpiar progreso?")) {
-      await setDoc(DOC_REF, { balance: 0, attemptedIds: [], completedIds: [] }, { merge: true });
-      setAttempted([]); setCompleted([]); setBalance(0); setView("home");
-    }
+    await setDoc(DOC_REF, { balance: 0, attemptedIds: [], completedIds: [] }, { merge: true });
+    setAttempted([]); setCompleted([]); setBalance(0);
+    setShowResetConfirm(false);
+    setView("home");
   };
 
-  const accuracy = attemptedIds.length > 0 ? Math.round((completedIds.length / attemptedIds.length) * 100) : 0;
+  const accuracy = attemptedIds.length > 0 
+    ? Math.round((completedIds.length / attemptedIds.length) * 100) 
+    : 0;
 
   if (!ready) return <div style={S.center}><Loader2 className="spin" /></div>;
 
@@ -188,37 +184,62 @@ export default function App() {
           --text-main: #1a202c; --text-title: #1a1a2e; --text-sec: #718096;
           --accent: #C8A84B; --border-passage: #d1cfc1;
           --border-ghost: #a8a697; --text-ghost: #1a202c;
+          --prog-bg: #E8E5DC; --prog-fill: #C8A84B;
         }
         [data-theme='dark'] {
           --bg-app: #121212; --bg-card: #1e1e1e; --bg-passage: #252525;
-          --text-main: #e2e8f0; --text-title: #60a5fa; --text-sec: #a0aec0;
-          --accent: #d4af37; --border-passage: #333333;
+          --text-main: #e2e8f0; --text-title: #C8A84B;
+          --text-sec: #a0aec0; --accent: #d4af37; --border-passage: #333333;
           --border-ghost: #333333; --text-ghost: #d4af37;
+          --prog-bg: #2a2a2a; --prog-fill: #d4af37;
         }
-        .passage-wrapper { position: relative; background: var(--bg-passage) !important; border: 1px solid var(--border-passage) !important; border-radius: 12px; overflow: hidden; }
-        .spin { animation: s 1s linear infinite; } @keyframes s { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .fade { animation: fadeIn 0.35s ease forwards; }
+        .spin { animation: s 1s linear infinite; }
+        @keyframes s { to { transform: rotate(360deg); } }
+        .progress-fill-bar { background: linear-gradient(90deg, #C8A84B, #2d6a4f); border-radius: 4px; height: 100%; transition: width 0.5s ease; }
       `}</style>
 
       {view === "login" ? (
         <Login loginPass={loginPass} setLoginPass={setLoginPass} setView={setView} setErr={setErr} err={err} appIcon={appIcon} S={S} />
       ) : (
         <>
-          <Header appIcon={appIcon} attemptedIds={attemptedIds} allQs={allQs} balance={balance} fmt={fmt} S={S} theme={theme} toggleTheme={toggleTheme} setFontSize={setFontSize} />
+          <Header 
+            appIcon={appIcon} attemptedIds={attemptedIds} allQs={allQs}
+            S={S} theme={theme} toggleTheme={toggleTheme}
+          />
           <div style={S.body}>
-            {view === "home" && <Home attemptedIds={attemptedIds} allQs={allQs} completedIds={completedIds} accuracy={accuracy} available={available} setIsReview={setIsReview} setQIdx={setQIdx} setView={setView} S={S} />}
-            {view === "test" && activeQ && 
-            <QuestionView currentQ={activeQ} fontSize={fontSize} setFontSize={setFontSize} goHome={goHome} confirmAnswer={confirmAnswer} selected={selected} setSelected={setSelected} showExp={showExp} confirmed={confirmed} correct={correct} nextQ={nextQ} successImage={successImage} errorImage={errorImage} DIFF_LIGHT={DIFF_LIGHT} S={S} fontSize={fontSize} />}
-            {view === "settings" && (
-              <AdminPanel 
-                settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen} 
-                settingsPass={settingsPass} setSettingsPass={setSettingsPass} 
-                err={err} errType={errType} setErr={setErr} goHome={goHome} 
-                generateWithAI={generateWithAI} generating={generating}
-                rates={rates} setRates={setRates} persist={persist} 
-                uploadImg={uploadImg} resetAll={resetAll} fmt={fmt} S={S} 
+            {view === "home" && (
+              <Home 
+                attemptedIds={attemptedIds} allQs={allQs} completedIds={completedIds}
+                accuracy={accuracy} available={available} reviewQs={reviewQs}
+                setIsReview={setIsReview} setQIdx={setQIdx} setView={setView}
+                balance={balance} fmt={fmt} S={S}
               />
             )}
-            {view === "results" && <Results balance={balance} completedIds={completedIds} accuracy={accuracy} fmt={fmt} goHome={goHome} S={S} />}
+            {view === "test" && activeQ && (
+              <QuestionView 
+                currentQ={activeQ} fontSize={fontSize} setFontSize={setFontSize}
+                goHome={goHome} confirmAnswer={confirmAnswer} selected={selected}
+                setSelected={setSelected} showExp={showExp} confirmed={confirmed}
+                correct={correct} nextQ={nextQ} successImage={successImage}
+                errorImage={errorImage} S={S}
+              />
+            )}
+            {view === "settings" && (
+              <AdminPanel 
+                settingsOpen={settingsOpen} setSettingsOpen={setSettingsOpen}
+                settingsPass={settingsPass} setSettingsPass={setSettingsPass}
+                err={err} errType={errType} setErr={setErr} goHome={goHome}
+                generateWithAI={generateWithAI} generating={generating}
+                rates={rates} setRates={setRates} persist={persist}
+                uploadImg={uploadImg} resetAll={resetAll} fmt={fmt} S={S}
+                showResetConfirm={showResetConfirm} setShowResetConfirm={setShowResetConfirm}
+              />
+            )}
+            {view === "results" && (
+              <Results balance={balance} completedIds={completedIds} accuracy={accuracy} fmt={fmt} goHome={goHome} S={S} />
+            )}
           </div>
         </>
       )}

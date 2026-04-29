@@ -8,7 +8,8 @@ import {
 export default function AdminPanel({ 
   settingsOpen, setSettingsOpen, settingsPass, setSettingsPass,
   err, errType, setErr, goHome, generateWithAI, generating,
-  rates, setRates, persist, uploadImg, resetAll, fmt, S = {}
+  rates, setRates, persist, uploadImg, resetAll, fmt, S = {},
+  showResetConfirm, setShowResetConfirm
 }) {
   
   const containerStyle = {
@@ -74,13 +75,68 @@ export default function AdminPanel({
         </div>
       </div>
 
-      <button onClick={resetAll} style={{ width: "100%", color: "#991b1b", padding: 14, borderRadius: 14, border: "1px solid #fca5a5", fontSize: 13, background: "none" }}>
+      <button onClick={() => setShowResetConfirm(true)} style={{ width: "100%", color: "#991b1b", padding: 14, borderRadius: 14, border: "1px solid #fca5a5", fontSize: 13, background: "none", cursor: "pointer" }}>
         Reiniciar Progreso
       </button>
 
       <button onClick={() => { setSettingsOpen(false); goHome(); }} style={{ ...S.btnGhost, width: "100%", marginTop: 20 }}>
         Cerrar Sesión Parental
       </button>
+
+      {/* MODAL DE CONFIRMACIÓN */}
+      {showResetConfirm && (
+        <div style={S.modalBackdrop} onClick={() => setShowResetConfirm(false)}>
+          <div 
+            className="fade"
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "var(--bg-card)",
+              border: "2px solid #fca5a5",
+              borderRadius: 24,
+              padding: "32px 24px",
+              width: "calc(100% - 48px)",
+              maxWidth: 340,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+              textAlign: "center",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.2)"
+            }}
+          >
+            <div style={{
+              width: 56, height: 56, borderRadius: 16,
+              background: "#fff5f5", border: "2px solid #fca5a5",
+              display: "flex", alignItems: "center", justifyContent: "center"
+            }}>
+              <Trash2 size={24} color="#991b1b" />
+            </div>
+
+            <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: "#991b1b", margin: 0 }}>
+              ¿Reiniciar progreso?
+            </h3>
+
+            <p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "var(--text-sec)", lineHeight: 1.5, margin: 0 }}>
+              Se eliminarán todas las preguntas respondidas, el saldo acumulado y el historial. Esta acción no se puede deshacer.
+            </p>
+
+            <div style={{ display: "flex", gap: 10, width: "100%", marginTop: 8 }}>
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                style={{ ...S.btnSecondary, flex: 1, background: "var(--bg-app)", border: "2px solid var(--border-ghost)", color: "var(--text-main)" }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={resetAll}
+                style={{ flex: 1, background: "#991b1b", color: "#fff", fontWeight: 700, fontSize: 14, padding: "13px 18px", borderRadius: 11, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                <Trash2 size={15} /> Reiniciar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
